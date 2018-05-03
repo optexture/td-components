@@ -1,5 +1,6 @@
 from inspect import signature
 import os
+from math import ceil
 
 if False:
 	class _Dummy:
@@ -12,11 +13,12 @@ if False:
 	del _Dummy
 
 class Context:
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
 
-	@staticmethod
-	def resolveOP(o):
+	def resolveOP(self, o):
 		if isinstance(o, str):
-			return op(o)
+			return self.ownerComp.op(o)
 		return o
 
 	def openUI(self, o, unique=True, borders=True):
@@ -113,10 +115,11 @@ class Context:
 			o.par.reinitnet.pulse()
 
 class Command:
-	def __init__(self, action, label=None, help=None):
+	def __init__(self, name, action, label=None, help=None):
+		self.name = str(name)
 		self.action = action
-		self.label = label
-		self.help = help
+		self.label = str(label or name)
+		self.help = str(help) if help else ''
 
 	def invoke(self, context):
 		if len(signature(self.action).parameters) >= 1:
@@ -125,44 +128,45 @@ class Command:
 			self.action()
 
 	@classmethod
-	def forOpenUI(cls, o, unique=True, borders=True, **kwargs):
-		return cls(lambda context: context.openUI(o, unique=unique, borders=borders), **kwargs)
+	def forOpenUI(cls, name, o, unique=True, borders=True, **kwargs):
+		return cls(name, lambda context: context.openUI(o, unique=unique, borders=borders), **kwargs)
 
 	@classmethod
-	def forToggleUI(cls, o, borders=True, **kwargs):
-		return cls(lambda context: context.openOrToggleUI(o, borders=borders), **kwargs)
+	def forToggleUI(cls, name, o, borders=True, **kwargs):
+		return cls(name, lambda context: context.openOrToggleUI(o, borders=borders), **kwargs)
 
 	@classmethod
-	def forEdit(cls, o, **kwargs):
-		return cls(lambda context: context.navigateTo(o), **kwargs)
+	def forEdit(cls, name, o, **kwargs):
+		return cls(name, lambda context: context.navigateTo(o), **kwargs)
 
 	@classmethod
-	def forParams(cls, oppath, **kwargs):
+	def forParams(cls, name, oppath, **kwargs):
 		def _action(context):
 			o = context.resolveOP(oppath)
 			if o:
 				o.openParameters()
-		return cls(_action, **kwargs)
+		return cls(name, _action, **kwargs)
 
 	@classmethod
-	def forReload(cls, oppaths, **kwargs):
+	def forReload(cls, name, oppaths, **kwargs):
 		def _action(context):
 			targetops = ops(oppaths)
 			for o in targetops:
 				context.reloadOPFile(o)
-		return cls(_action, **kwargs)
+		return cls(name, _action, **kwargs)
 
 	@classmethod
-	def forSave(cls, oppaths, path, **kwargs):
+	def forSave(cls, name, oppaths, path, **kwargs):
 		def _action(context):
 			targetops = ops(oppaths)
 			for o in targetops:
 				context.saveOP(o, path)
-		return cls(_action, **kwargs)
+		return cls(name, _action, **kwargs)
 
 	@classmethod
 	def forExec(
-			cls, oppath, args=None, endFrame=False, fromOP=None, group=None, delayFrames=0, delayMilliSeconds=0, **kwargs):
+			cls, name, oppath, args=None, endFrame=False, fromOP=None,
+			group=None, delayFrames=0, delayMilliSeconds=0, **kwargs):
 		def _action(context):
 			o = context.resolveOP(oppath)
 			if o and o.isDAT:
@@ -170,76 +174,288 @@ class Command:
 					*args,
 					endFrame=endFrame, fromOP=fromOP, group=group,
 					delayFrames=delayFrames, delayMilliSeconds=delayMilliSeconds)
-		return cls(_action, **kwargs)
+		return cls(name, _action, **kwargs)
 
 	@classmethod
-	def forAction(cls, action, **kwargs):
-		return cls(action, **kwargs)
+	def forAction(cls, name, action, **kwargs):
+		return cls(name, action, **kwargs)
 
 	@classmethod
 	def fromRow(cls, dat, row):
-		typename = dat[row, 'type']
-		label = str(dat[row, 'label'] or '')
-		helptext = str(dat[row, 'help'] or '')
+		obj = {
+			dat[0, i].val: dat[row, i].val
+			for i in range(dat.numCols)
+		}
+		return Command.fromObj(obj)
+
+	@classmethod
+	def fromObj(cls, obj):
+		name = obj['name']
+		typename = obj.get('type')
+		label = obj.get('label')
+		helptext = obj.get('help')
 		kwargs = {
 			'label': label,
 			'help': helptext,
 		}
-		o = str(dat[row, 'op'] or '')
+		o = obj.get('o') or obj.get('op')
+		if not typename:
+			action = obj.get('action', _noop)
+			return Command.forAction(name, action, **kwargs)
 		if typename in ['open', 'show', 'view']:
 			return Command.forOpenUI(
-				o,
-				unique=dat[row, 'unique'] == '1',
-				borders=dat[row, 'borders'] == '1',
+				name, o,
+				unique=_asbool(obj.get('unique'), False),
+				borders=_asbool(obj.get('borders'), False),
 				**kwargs)
 		elif typename in ['toggle']:
 			return Command.forToggleUI(
-				o,
-				borders=dat[row, 'borders'] == '1',
+				name, o,
+				borders=_asbool(obj.get('borders'), False),
 				**kwargs)
 		elif typename in ['params', 'pars']:
-			return Command.forParams(o, **kwargs)
+			return Command.forParams(name, o, **kwargs)
 		elif typename in ['edit', 'nav', 'navigate']:
-			return Command.forEdit(o, **kwargs)
+			return Command.forEdit(name, o, **kwargs)
 		elif typename in ['run']:
 			return Command.forExec(
-				o,
-				delayFrames=int(dat[row, 'delayFrames'] or 0),
+				name, o,
+				delayFrames=_asint(obj.get('delayFrames'), 0),
 				**kwargs)
 		elif typename in ['code', 'script']:
-			code = str(dat[row, 'code'] or '')
+			code = obj.get('code')
 			if not code:
-				return None
+				return Command.forAction(name, _noop, **kwargs)
 			if code.startswith('lambda'):
-				return Command.forAction(eval(code), **kwargs)
+				return Command.forAction(name, eval(code), **kwargs)
 			else:
-				return Command.forAction(lambda _: eval(code), **kwargs)
+				return Command.forAction(name, lambda _: eval(code), **kwargs)
 		elif typename in ['reload']:
-			return Command.forReload(o, **kwargs)
+			return Command.forReload(name, o, **kwargs)
 		elif typename in ['save']:
 			return Command.forSave(
-				o,
-				path=dat[row, 'path'] or dat[row, 'file'],
+				name, o,
+				path=obj.get('path') or obj.get('file'),
 				**kwargs)
+		pass
 
+def _noop(*args, **kwargs):
+	pass
 
-def loadCommandsFromTable(dat):
-	commands = []
-	for row in range(1, dat.numRows):
-		command = Command.fromRow(dat, row)
+def _asbool(val, defval):
+	if val is None or val == '':
+		return defval
+	if val == '1':
+		return True
+	if val == '0':
+		return False
+	return bool(val)
+
+def _asint(val, defval):
+	if val is None or val == '':
+		return defval
+	return int(val)
+
+def _strornull(val):
+	return str(val) if val is not None else None
+
+class CommandPanel:
+	def __init__(self, comp):
+		self.ownerComp = comp
+		self.commandlist = []
+		self.commandlookup = {}
+
+	def _AddCommand(self, command):
 		if command:
-			commands.append(command)
-	return commands
+			self.commandlist.append(command)
+			self.commandlookup[command.name] = command
 
-# ... not sure if i'm going to be using this list stuff yet
+	def _AddCommandsFromTable(self, dat):
+		for row in range(1, dat.numRows):
+			self._AddCommand(Command.fromRow(dat, row))
+
+	def RebuildCommands(self):
+		self.commandlist.clear()
+		self.commandlookup.clear()
+		cmdtablein = self.ownerComp.par.Cmdtable.eval()
+		if cmdtablein:
+			self._AddCommandsFromTable(cmdtablein)
+
+		if self.ownerComp.par.Enabletestcmds:
+			self._AddCommandsFromTable(self.ownerComp.op('./TEST_commands'))
+		pass
+
+	def BuildCommandTable(self, dat):
+		self.RebuildCommands()
+		dat.clear()
+		dat.appendRow(['name', 'label', 'help'])
+		for command in self.commandlist:
+			dat.appendRow([
+				command.name,
+				command.label,
+				command.help or '',
+			])
+
+	@property
+	def IsHorizontal(self):
+		return self.ownerComp.par.Layout == 'horz'
+
+	@property
+	def LayoutRows(self):
+		n = len(self.commandlist)
+		linemax = self.ownerComp.par.Maxperline.eval()
+		if n == 0:
+			return 0
+		if self.IsHorizontal:
+			if linemax == 0:
+				return 1
+			else:
+				return ceil(n / linemax)
+		else:
+			if linemax == 0:
+				return n
+			else:
+				return linemax
+
+	@property
+	def LayoutCols(self):
+		n = len(self.commandlist)
+		linemax = self.ownerComp.par.Maxperline.eval()
+		if n == 0:
+			return 0
+		if self.IsHorizontal:
+			if linemax == 0:
+				return n
+			else:
+				return linemax
+		else:
+			if linemax == 0:
+				return 1
+			else:
+				return ceil(n / linemax)
+
+	# OBSOLETE!
+	def BuildLayoutAttrs(self, dat):
+		dat.clear()
+		layout = self.ownerComp.par.Layout.eval()
+		linemax = self.ownerComp.par.Maxperline.eval()
+		n = len(self.commandlist)
+		if n == 0:
+			cellw = 1
+			cols = 1
+			rows = 0
+			align = 'horzlr'
+		elif layout == 'horz':
+			if linemax == 0:
+				cellw = 1 / n
+				cols = n
+				rows = 1
+			else:
+				cols = linemax
+				rows = ceil(n / cols)
+				cellw = 1 / cols
+			align = 'horizlr'
+		else:  # vert
+			if linemax == 0:
+				cellw = 1
+				cols = 1
+				rows = n
+			else:
+				rows = linemax
+				cols = ceil(n / rows)
+				cellw = 1 / cols
+			align = 'verttb'
+		dat.appendRow(['cellw', cellw])
+		dat.appendRow(['rows', rows])
+		dat.appendRow(['cols', cols])
+		dat.appendRow(['align', align])
+
+	def _GetCellCommand(self, listComp, row, col):
+		if self.IsHorizontal:
+			i = (row * listComp.par.cols) + col
+		else:
+			i = (col * listComp.par.rows) + row
+		return self.commandlist[i] if i < len(self.commandlist) else None
+
+	# called when Reset parameter is pulsed, or on load
+	def List_onInitCell(self, listComp, row, col, attribs):
+		command = self._GetCellCommand(listComp, row, col)
+		if not command:
+			attribs.text = ''
+			attribs.topBorderOutColor = attribs.bottomBorderOutColor = 0, 0, 0, 0
+			attribs.rightBorderOutColor = attribs.leftBorderOutColor = 0, 0, 0, 0
+			attribs.bgColor = 0, 0, 0, 0
+		else:
+			attribs.text = command.label
+			attribs.topBorderOutColor = attribs.bottomBorderOutColor = cellbordercolor
+			attribs.rightBorderOutColor = attribs.leftBorderOutColor = cellbordercolor
+			self.UpdateCellState(listComp, row, col)
+
+	def List_onInitRow(self, listComp, row, attribs):
+		attribs.rowHeight = listComp.height / listComp.par.rows
+
+	def List_onInitCol(self, listComp, col, attribs):
+		attribs.colWidth = listComp.width / listComp.par.cols
+
+	def List_onInitTable(self, listComp, attribs):
+		self.UpdateAllCellStates(listComp)
+
+	# called during specific events
+	#
+	# coords - a named tuple containing the following members:
+	#   x
+	#   y
+	#   u
+	#   v
+	def List_onRollover(self, listComp, row, col, coords, prevRow, prevCol, prevCoords):
+		self.UpdateAllCellStates(listComp)
+
+	def List_onSelect(self, listComp, startRow, startCol, startCoords, endRow, endCol, endCoords, start, end):
+		self.UpdateAllCellStates(listComp)
+		if not start:
+			return
+		command = self._GetCellCommand(listComp, startRow, startCol)
+		if not command:
+			return
+		print('OMG [row={},col={}] command: {}'.format(startRow, startCol, command.name if command else '<NULL>'))
+		context = Context(self.ownerComp)
+		command.invoke(context)
+		return
+
+	def List_onRadio(self, listComp, row, col, prevRow, prevCol):
+		return
+
+	def List_onFocus(self, listComp, row, col, prevRow, prevCol):
+		return
+
+	def List_onEdit(self, listComp, row, col, val):
+		return
+
+	# return True if interested in this drop event, False otherwise
+	def List_onHoverGetAccept(self, listComp, row, col, coords, prevRow, prevCol, prevCoords, dragItems):
+		return False
+
+	def List_onDropGetAccept(self, listComp, row, col, coords, prevRow, prevCol, prevCoords, dragItems):
+		return False
+
+	def UpdateAllCellStates(self, listComp):
+		for r in range(listComp.par.rows.eval()):
+			for c in range(listComp.par.cols.eval()):
+				self.UpdateCellState(listComp, r, c)
+
+	def UpdateCellState(self, listComp, row, col):
+		command = self._GetCellCommand(listComp, row, col)
+		if not command:
+			return
+		attribs = listComp.cellAttribs[row, col]
+		if listComp.panel.select and row == listComp.selectRow and col == listComp.selectCol:
+			attribs.bgColor = activebgcolor
+		elif listComp.panel.rollover and row == listComp.rolloverRow and col == listComp.rolloverCol:
+			attribs.bgColor = hoverbgcolor
+		else:
+			attribs.bgColor = defaultbgcolor
 
 
-# me - this DAT
-#
-# comp - the List Component that holds this panel
-# row - the row number of the cell being updated
-# col - the column number of the cell being updated
-#
 # attribs contains the following members:
 #
 # text				   str            cell contents
@@ -308,8 +524,9 @@ defaultbgcolor = 0.3, 0.3, 0.3, 1
 hoverbgcolor = 0.7, 0.7, 0.7, 1
 activebgcolor = 0.9, 0.9, 0.9, 1
 
+cellbordercolor = 0.9, 0.9, 0.9, 1
 
-def _updateCellColor(attribs):
+def _updateCellColor(attribs, rollover):
 	if attribs.select:
 		attribs.bgColor = activebgcolor
 	elif attribs.rollover:
@@ -317,59 +534,9 @@ def _updateCellColor(attribs):
 	else:
 		attribs.bgColor = defaultbgcolor
 
-class ListCallbacks:
-
-	# called when Reset parameter is pulsed, or on load
-	@staticmethod
-	def onInitCell(comp, row, col, attribs):
-		_updateCellColor(attribs)
-		return
-
-	@staticmethod
-	def onInitRow(comp, row, attribs):
-		return
-
-	@staticmethod
-	def onInitCol(comp, col, attribs):
-		return
-
-	@staticmethod
-	def onInitTable(comp, attribs):
-		return
-
-	# called during specific events
-	#
-	# coords - a named tuple containing the following members:
-	#   x
-	#   y
-	#   u
-	#   v
-	@staticmethod
-	def onRollover(comp, row, col, coords, prevRow, prevCol, prevCoords):
-		return
-
-	@staticmethod
-	def onSelect(comp, startRow, startCol, startCoords, endRow, endCol, endCoords, start, end):
-		return
-
-	@staticmethod
-	def onRadio(comp, row, col, prevRow, prevCol):
-		return
-
-	@staticmethod
-	def onFocus(comp, row, col, prevRow, prevCol):
-		return
-
-	@staticmethod
-	def onEdit(comp, row, col, val):
-		return
-
-	# return True if interested in this drop event, False otherwise
-	@staticmethod
-	def onHoverGetAccept(comp, row, col, coords, prevRow, prevCol, prevCoords, dragItems):
-		return False
-
-	@staticmethod
-	def onDropGetAccept(comp, row, col, coords, prevRow, prevCol, prevCoords, dragItems):
-		return False
+def _updateCellColors(listComp):
+	for r in range(listComp.par.rows.eval()):
+		for c in range(listComp.par.cols.eval()):
+			attribs = listComp.cellAttribs[r, c]
+			_updateCellColor(attribs)
 
