@@ -60,8 +60,8 @@ class Context:
 		else:
 			raise NotImplementedError('toggleUI only supported for Window COMP')
 
-	@staticmethod
-	def getActiveEditor():
+	@property
+	def activeEditor(self):
 		pane = ui.panes.current
 		if pane.type == PaneType.NETWORKEDITOR:
 			return pane
@@ -69,11 +69,33 @@ class Context:
 			if pane.type == PaneType.NETWORKEDITOR:
 				return pane
 
+	def getSelectedOps(self, predicate=None):
+		pane = self.activeEditor
+		if not pane:
+			return []
+		sel = pane.owner.selectedChildren or [pane.owner.currentChild]
+		if predicate is not None:
+			sel = list(filter(predicate, sel))
+		return sel
+
+	def getSelectedOrContext(self, predicate):
+		sel = self.getSelectedOps(predicate)
+		if sel:
+			return sel[0]
+		pane = self.activeEditor
+		if not pane:
+			return
+		o = pane.owner
+		while o:
+			if predicate(o):
+				return o
+			o = o.parent()
+
 	def navigateTo(self, o):
 		o = self.resolveOP(o)
 		if not o:
 			return
-		pane = self.getActiveEditor()
+		pane = self.activeEditor
 		if pane:
 			pane.owner = o
 
@@ -91,35 +113,53 @@ class Context:
 	def saveOP(self, o, path=None):
 		o = self.resolveOP(o)
 		if not o:
-			return
+			return False
 		if path is None:
-			if o.isDAT and hasattr(o.par, 'writepulse'):
+			if o.isDAT and getattr(o.par, 'file') and hasattr(o.par, 'writepulse'):
+				path = o.par.file
 				o.par.writepulse.pulse()
-				return
+				ui.status = 'saved {} to {}'.format(o.path, path)
+				return True
 			if o.isCOMP:
 				path = o.par.externaltox.eval()
 			elif hasattr(o.par, 'file'):
 				path = o.par.file.eval()
 		if not path:
-			return
+			return False
 		o.save(path)
+		ui.status = 'saved {} to {}'.format(o.path, path)
+		return True
 
 	def reloadOPFile(self, o):
 		o = self.resolveOP(o)
 		if not o:
-			return
+			return False
 		if o.isDAT and hasattr(o.par, 'loadonstartpulse'):
 			o.par.loadonstartpulse.pulse()
-			return
+			return True
 		if o.isCOMP:
 			o.par.reinitnet.pulse()
+			return True
+		return False
 
 class Command:
-	def __init__(self, name, action, label=None, help=None):
+	def __init__(self, name, action, **attrs):
 		self.name = str(name)
 		self.action = action
-		self.label = str(label or name)
-		self.help = str(help) if help else ''
+		self.attrs = attrs or {}
+
+	@property
+	def label(self): return self.attrs.get('label') or self.name
+
+	@property
+	def help(self): return self.attrs.get('help') or ''
+
+	@property
+	def img(self):
+		i = self.attrs.get('img')
+		if isinstance(i, str):
+			i = op(i)
+		return i
 
 	def invoke(self, context):
 		if len(signature(self.action).parameters) >= 1:
@@ -173,7 +213,8 @@ class Command:
 				o.run(
 					*args,
 					endFrame=endFrame, fromOP=fromOP, group=group,
-					delayFrames=delayFrames, delayMilliSeconds=delayMilliSeconds)
+					delayFrames=delayFrames, delayMilliSeconds=delayMilliSeconds,
+					**kwargs)
 		return cls(name, _action, **kwargs)
 
 	@classmethod
@@ -190,54 +231,54 @@ class Command:
 
 	@classmethod
 	def fromObj(cls, obj):
+		if _asbool(obj.get('hidden'), False):
+			return None
 		name = obj['name']
 		typename = obj.get('type')
-		label = obj.get('label')
-		helptext = obj.get('help')
-		kwargs = {
-			'label': label,
-			'help': helptext,
+		attrs = {
+			'label': obj.get('label'),
+			'help': obj.get('help'),
+			'img': obj.get('img'),
 		}
 		o = obj.get('o') or obj.get('op')
 		if not typename:
 			action = obj.get('action', _noop)
-			return Command.forAction(name, action, **kwargs)
+			return Command.forAction(name, action, **attrs)
 		if typename in ['open', 'show', 'view']:
 			return Command.forOpenUI(
 				name, o,
 				unique=_asbool(obj.get('unique'), False),
 				borders=_asbool(obj.get('borders'), False),
-				**kwargs)
+				**attrs)
 		elif typename in ['toggle']:
 			return Command.forToggleUI(
 				name, o,
 				borders=_asbool(obj.get('borders'), False),
-				**kwargs)
+				**attrs)
 		elif typename in ['params', 'pars']:
-			return Command.forParams(name, o, **kwargs)
+			return Command.forParams(name, o, **attrs)
 		elif typename in ['edit', 'nav', 'navigate']:
-			return Command.forEdit(name, o, **kwargs)
+			return Command.forEdit(name, o, **attrs)
 		elif typename in ['run']:
 			return Command.forExec(
 				name, o,
 				delayFrames=_asint(obj.get('delayFrames'), 0),
-				**kwargs)
+				**attrs)
 		elif typename in ['code', 'script']:
 			code = obj.get('code')
 			if not code:
-				return Command.forAction(name, _noop, **kwargs)
+				return Command.forAction(name, _noop, **attrs)
 			if code.startswith('lambda'):
-				return Command.forAction(name, eval(code), **kwargs)
+				return Command.forAction(name, eval(code), **attrs)
 			else:
-				return Command.forAction(name, lambda _: eval(code), **kwargs)
+				return Command.forAction(name, lambda _: eval(code), **attrs)
 		elif typename in ['reload']:
-			return Command.forReload(name, o, **kwargs)
+			return Command.forReload(name, o, **attrs)
 		elif typename in ['save']:
 			return Command.forSave(
 				name, o,
 				path=obj.get('path') or obj.get('file'),
-				**kwargs)
-		pass
+				**attrs)
 
 def _noop(*args, **kwargs):
 	pass
@@ -270,20 +311,33 @@ class CommandPanel:
 			self.commandlist.append(command)
 			self.commandlookup[command.name] = command
 
+	def _AddCommands(self, commands):
+		if commands:
+			for command in commands:
+				self._AddCommand(command)
+
 	def _AddCommandsFromTable(self, dat):
+		if not dat or dat.numRows < 2:
+			return
 		for row in range(1, dat.numRows):
 			self._AddCommand(Command.fromRow(dat, row))
 
 	def RebuildCommands(self):
 		self.commandlist.clear()
 		self.commandlookup.clear()
-		cmdtablein = self.ownerComp.par.Cmdtable.eval()
-		if cmdtablein:
-			self._AddCommandsFromTable(cmdtablein)
-
-		if self.ownerComp.par.Enabletestcmds:
+		self._AddCommandsFromTable(self.ownerComp.op('./command_table_in'))
+		if self.ownerComp.par.Includebasictoolcmds:
+			self._AddCommands(_basicToolCommands)
+		if self.ownerComp.par.Includetestcmds:
 			self._AddCommandsFromTable(self.ownerComp.op('./TEST_commands'))
-		pass
+
+		cmdobjs = self.ownerComp.par.Cmdobjs.eval()
+		if cmdobjs:
+			if isinstance(cmdobjs, (list, tuple)):
+				for cmdobj in cmdobjs:
+					self._AddCommand(Command.fromObj(cmdobj))
+			else:
+				self._AddCommand(Command.fromObj(cmdobjs))
 
 	def BuildCommandTable(self, dat):
 		self.RebuildCommands()
@@ -293,7 +347,7 @@ class CommandPanel:
 			dat.appendRow([
 				command.name,
 				command.label,
-				command.help or '',
+				command.help,
 			])
 
 	@property
@@ -334,42 +388,6 @@ class CommandPanel:
 			else:
 				return ceil(n / linemax)
 
-	# OBSOLETE!
-	def BuildLayoutAttrs(self, dat):
-		dat.clear()
-		layout = self.ownerComp.par.Layout.eval()
-		linemax = self.ownerComp.par.Maxperline.eval()
-		n = len(self.commandlist)
-		if n == 0:
-			cellw = 1
-			cols = 1
-			rows = 0
-			align = 'horzlr'
-		elif layout == 'horz':
-			if linemax == 0:
-				cellw = 1 / n
-				cols = n
-				rows = 1
-			else:
-				cols = linemax
-				rows = ceil(n / cols)
-				cellw = 1 / cols
-			align = 'horizlr'
-		else:  # vert
-			if linemax == 0:
-				cellw = 1
-				cols = 1
-				rows = n
-			else:
-				rows = linemax
-				cols = ceil(n / rows)
-				cellw = 1 / cols
-			align = 'verttb'
-		dat.appendRow(['cellw', cellw])
-		dat.appendRow(['rows', rows])
-		dat.appendRow(['cols', cols])
-		dat.appendRow(['align', align])
-
 	def _GetCellCommand(self, listComp, row, col):
 		if self.IsHorizontal:
 			i = (row * listComp.par.cols) + col
@@ -387,6 +405,8 @@ class CommandPanel:
 			attribs.bgColor = 0, 0, 0, 0
 		else:
 			attribs.text = command.label
+			attribs.help = command.help
+			attribs.top = command.img
 			attribs.topBorderOutColor = attribs.bottomBorderOutColor = cellbordercolor
 			attribs.rightBorderOutColor = attribs.leftBorderOutColor = cellbordercolor
 			self.UpdateCellState(listComp, row, col)
@@ -417,7 +437,6 @@ class CommandPanel:
 		command = self._GetCellCommand(listComp, startRow, startCol)
 		if not command:
 			return
-		print('OMG [row={},col={}] command: {}'.format(startRow, startCol, command.name if command else '<NULL>'))
 		context = Context(self.ownerComp)
 		command.invoke(context)
 		return
@@ -526,17 +545,24 @@ activebgcolor = 0.9, 0.9, 0.9, 1
 
 cellbordercolor = 0.9, 0.9, 0.9, 1
 
-def _updateCellColor(attribs, rollover):
-	if attribs.select:
-		attribs.bgColor = activebgcolor
-	elif attribs.rollover:
-		attribs.bgColor = hoverbgcolor
-	else:
-		attribs.bgColor = defaultbgcolor
+def _copyPaths(context: Context):
+	sel = context.getSelectedOps()
+	ui.clipboard = ' '.join([o.path for o in sel])
 
-def _updateCellColors(listComp):
-	for r in range(listComp.par.rows.eval()):
-		for c in range(listComp.par.cols.eval()):
-			attribs = listComp.cellAttribs[r, c]
-			_updateCellColor(attribs)
+def _saveTox(context: Context):
+	comp = context.getSelectedOrContext(lambda o: o.isCOMP and o.par.externaltox)
+	if comp:
+		context.saveOP(comp)
 
+_basicToolCommands = [
+	Command.forAction(
+		'tools-copy-path',
+		_copyPaths,
+		label='copy path',
+		help='copy paths of selected ops'),
+	Command.forAction(
+		'tools-save-tox',
+		_saveTox,
+		label='save',
+		help='save selected or active component tox file'),
+]
