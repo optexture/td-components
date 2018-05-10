@@ -13,13 +13,22 @@ class Recorder:
 		self.UpdateFileNames()
 
 	def CaptureImage(self):
-		pass
+		self.UpdateFileNames()
+		fileout = self.ownerComp.op('./imagefileout')
+		fileout.par.record.pulse()
+		ui.status = 'Wrote image to ' + fileout.par.file.eval()
+		self.UpdateDiskSpace()
 
-	def StartVideoCapture(self, imgSequence=False):
-		pass
+	def StartVideoCapture(self):
+		self.UpdateFileNames()
+		fileout = self.ownerComp.op('./moviefileout')
+		fileout.par.record = True
 
 	def EndVideoCapture(self):
-		pass
+		fileout = self.ownerComp.op('./moviefileout')
+		fileout.par.record = False
+		ui.status = 'Wrote video to ' + fileout.par.file.eval()
+		self.UpdateDiskSpace()
 
 	@property
 	def _OutputFolderPath(self):
@@ -91,7 +100,11 @@ class Recorder:
 		suffix = self.ownerComp.op('./video_codecs')[vcodec, 'suffix']
 		return suffix.val if suffix and suffix.val else vcodec
 
-	
+	@property
+	def ImageExtension(self):
+		imgtype = self.ownerComp.par.Imagefiletype.eval()
+		ext = self.ownerComp.op('./image_ext_overrides')[imgtype, 1]
+		return ext.val if ext else imgtype
 
 _sizes = ["B", "KB", "MB", "GB", "TB"]
 def _formatBytes(bytes_num):
