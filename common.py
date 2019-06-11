@@ -82,8 +82,8 @@ def _InitFileLog():
 	f.flush()
 	return IndentedLogger(outfile=_Tee(sys.stdout, f))
 
-#_logger = IndentedLogger()
-_logger = _InitFileLog()
+_logger = IndentedLogger()
+# _logger = _InitFileLog()
 
 class LoggableBase:
 	def _GetLogId(self) -> Optional[str]:

@@ -5,6 +5,14 @@ import shutil
 
 from common import ExtensionBase, loggedmethod
 
+_inputResMultipliers = {
+	'quarter': 0.25,
+	'half': 0.5,
+	'original': 1,
+	'double': 2,
+	'quadruple': 4,
+}
+
 class Recorder(ExtensionBase):
 	def __init__(self, ownerComp):
 		super().__init__(ownerComp)
@@ -33,12 +41,21 @@ class Recorder(ExtensionBase):
 		return name + '-'
 
 	@property
-	def _ResolutionSuffix(self):
+	def Resolution(self):
 		if self.ownerComp.par.Useinputres:
 			video = self.ownerComp.op('./video')
+			multipliername = self.ownerComp.par.Inputresmult.eval()
 			w, h = video.width, video.height
+			mult = _inputResMultipliers.get(multipliername) or 1
+			w = round(w * mult)
+			h = round(h * mult)
 		else:
 			w, h = int(self.ownerComp.par.Resolution1), int(self.ownerComp.par.Resolution2)
+		return w, h
+
+	@property
+	def FormattedResolution(self):
+		w, h = self.Resolution
 		return '{}x{}'.format(w, h)
 
 	@property
@@ -61,7 +78,7 @@ class Recorder(ExtensionBase):
 		suffix = self.ownerComp.par.Suffix.eval()
 		suffixparts = [suffix] if suffix else []
 		if self.ownerComp.par.Addresolutionsuffix:
-			suffixparts.append(self._ResolutionSuffix)
+			suffixparts.append(self.FormattedResolution)
 		if isvideo or isimagesequence:
 			if self.ownerComp.par.Addvcodecsuffix:
 				suffixparts.append(self._VideoCodecSuffix)
