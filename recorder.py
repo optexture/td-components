@@ -36,6 +36,8 @@ class Recorder(ExtensionBase):
 		name = self.ownerComp.par.Basename.eval()
 		if not name:
 			name = os.path.splitext(project.name)[0] + '-output'
+		if name.endswith('.toe'):
+			name = name[:-4]
 		if self.ownerComp.par.Includedate:
 			name += '-' + str(datetime.date.today())
 		return name + '-'

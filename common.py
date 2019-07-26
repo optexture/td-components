@@ -25,7 +25,8 @@ def Log(msg, file=None):
 		_LoggerTimestamp(),
 		msg,
 		file=file)
-	file.flush()
+	if file is not None:
+		file.flush()
 
 class IndentedLogger:
 	def __init__(self, outfile=None):
