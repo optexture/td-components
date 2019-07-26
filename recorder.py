@@ -181,6 +181,21 @@ class Recorder(ExtensionBase):
 		ui.status = 'WARNING: halting recording due to insufficient disk space'
 		self.EndVideoCapture()
 
+	def UpdatePanelHeight(self):
+		height = _panelsHeight(self.ownerComp.op('root_panel').panelChildren)
+		height += _panelsHeight(self.ownerComp.op('settings_panel').panelChildren)
+		maxheight = self.ownerComp.par.Maxheight.eval()
+		if 0 < maxheight < height:
+			height = maxheight
+		self.ownerComp.par.h = height
+
+def _panelsHeight(panels):
+	return sum([
+		c.height
+		for c in panels
+		if c.isPanel and c.par.display and c.par.vmode == 'fixed'
+	])
+
 _sizes = ["B", "KB", "MB", "GB", "TB"]
 def _formatBytes(bytes_num):
 
