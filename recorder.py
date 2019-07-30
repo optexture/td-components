@@ -155,9 +155,6 @@ class Recorder(ExtensionBase):
 		filepath = folder.joinpath(self.BuildImageFileName())
 		fileout = self.ownerComp.op('video')
 		fileout.save(filepath)
-		#fileout = self.ownerComp.op('imagefileout')
-		#fileout.par.file = filepath
-		#fileout.par.record.pulse()
 		ui.status = 'Wrote image to ' + str(filepath)
 
 	def UpdateDiskSpace(self):
