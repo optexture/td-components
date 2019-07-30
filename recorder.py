@@ -87,7 +87,7 @@ class Recorder(ExtensionBase):
 			if self.ownerComp.par.Addacodecsuffix and self._HasAudio:
 				suffixparts.append(self.ownerComp.par.Audiocodec.eval())
 			if self.ownerComp.par.Addfpssuffix:
-				suffixparts.append(str(self.ownerComp.par.Fps))
+				suffixparts.append(str(self.ownerComp.par.Fps) + 'fps')
 		if isvideo:
 			ext = '.mov'
 		else:
