@@ -2,6 +2,8 @@ import typing as T
 
 print('midimap.py loading...')
 
+if False:
+	from _stubs import *
 
 class MidiMapper:
 	def __init__(self, ownerComp):
@@ -87,6 +89,23 @@ class MidiMapper:
 	def _HandleDrop(self, args):
 		pass
 
+	@staticmethod
+	def PrepareDevices(dat):
+		dat.appendCol(['label'])
+		for i in range(1, dat.numRows):
+			indev = dat[i, 'indevice']
+			outdev = dat[i, 'outdevice']
+			if indev == outdev:
+				dat[i, 'label'] = indev
+			else:
+				dat[i, 'label'] = '{} / {}'.format(indev, outdev)
+		for i in range(dat.numRows, 17):
+			dat.appendRow([i])
+			name = '({})'.format(i)
+			dat[i, 'indevice'] = name
+			dat[i, 'outdevice'] = name
+			dat[i, 'label'] = name + ' (unknown)'
+			dat[i, 'channel'] = 1
 
 class Mapping:
 	def __init__(
