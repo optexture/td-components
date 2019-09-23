@@ -404,6 +404,13 @@ def _saveTox(context: Context):
 	if comp:
 		context.saveOP(comp)
 
+def _incrementComponentVersion(context: Context):
+	comp = context.getSelectedOrContext(lambda o: o.isCOMP and hasattr(o.par, 'Compversion'))
+	if comp:
+		par = comp.par.Compversion
+		par.val += 1
+		par.default = par.val
+
 _basicToolCommands = [
 	Command.forAction(
 		_copyPaths,
@@ -413,4 +420,9 @@ _basicToolCommands = [
 		_saveTox,
 		label='save',
 		help='save selected or active component tox file'),
+	Command.forAction(
+		_incrementComponentVersion,
+		label='version++',
+		help='increment the component version attribute on selected or active',
+	)
 ]
