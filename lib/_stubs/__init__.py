@@ -82,7 +82,7 @@ class td:
 	error = _TD_ERROR
 
 	@staticmethod
-	def run(codeorwhatever, delayFrames=0, delayMilliSeconds=0, delayRef=None): pass
+	def run(codeorwhatever, *args, delayFrames=0, delayMilliSeconds=0, delayRef=None): pass
 
 	class Attribute:
 		def __init__(self):
@@ -94,6 +94,7 @@ class td:
 
 del _TD_ERROR
 
+run = td.run
 
 class _Matrix:
 	def __init__(self, *values):
@@ -208,6 +209,9 @@ class tdu:
 
 	@staticmethod
 	def match(pattern, inputList, caseSensitive=True) -> '_List[str]': pass
+
+	@staticmethod
+	def collapsePath(path): return path
 
 JustifyType = _Expando()
 JustifyType.TOPLEFT, JustifyType.TOPCENTER, JustifyType.TOPRIGHT, JustifyType.CENTERLEFT = 0, 0, 0, 0
