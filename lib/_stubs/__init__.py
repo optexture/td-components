@@ -243,3 +243,7 @@ scriptSOP = SOP
 
 class app:
 	name = ''
+	build = ''
+	launchTime = ''
+	product = ''
+	version = ''
