@@ -293,22 +293,54 @@ class PrintLogger(LoggerBase):
 	def __init__(self, ownerComp):
 		super().__init__(ownerComp)
 
-	def _GetFile(self):
-		return None
-
 	def _HandleMessage(self, message: Message):
 		text = message.toText(
 			useindent=True,
 			timestamptype=_TimestampTypes.getType(str(self.ownerComp.par.Timestamptype)),
 			includelevel=self.ownerComp.par.Includelevel)
 		if text:
-			print(text, file=self._GetFile())
+			self._PrintText(text)
 			msglog = self.ownerComp.op('message_log')
 			if msglog.par.maxlines:
 				msglog.appendRow([text])
 
+	def _PrintText(self, text: str):
+		print(text)
+
 class ConsoleLogger(PrintLogger):
 	pass
+
+class FileLogger(PrintLogger):
+	def __init__(self, ownerComp):
+		super().__init__(ownerComp)
+		self._file = None
+		self._hasnofile = False
+
+	def ResetFile(self):
+		if self._file:
+			self._file.close()
+		self._file = None
+		self._hasnofile = False
+
+	def _InitializeFile(self):
+		if self._file:
+			self._file.close()
+			self._file = None
+		self._hasnofile = True
+		mode = self.ownerComp.par.Filemode.eval()
+		append = self.ownerComp.par.Appendtofile.eval()
+		if mode == 'simple':
+			filename = self.ownerComp.par.Logfile.eval()
+			if filename:
+				self._file = open(filename, 'a' if append else 'w')
+				self._hasnofile = False
+
+	def _PrintText(self, text: str):
+		if self._hasnofile:
+			return
+		if not self._file:
+			self._InitializeFile()
+		print(text, file=self._file, flush=True)
 
 
 def cleandict(d):
