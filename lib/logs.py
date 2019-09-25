@@ -4,8 +4,7 @@ from typing import Callable, Dict, Union, List
 from datetime import datetime
 import json
 import socket
-from logging import CRITICAL, FATAL, ERROR, WARN, WARNING, INFO, DEBUG, NOTSET
-from logging import getLevelName
+from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET
 
 if False:
 	from _stubs import *
@@ -28,11 +27,6 @@ class _TimestampType:
 	def get(self):
 		return self.format(datetime.now()) if self.format else ''
 
-def TimestampTypeMenuSource():
-	return TDF.parMenu(
-		[t.name for t in _TimestampTypes.alltypes],
-		[t.label for t in _TimestampTypes.alltypes])
-
 class _TimestampTypes:
 	none = _TimestampType('none', 'None', lambda dt: '')
 	basictime = _TimestampType('basictime', 'Basic Time', '%H:%M:%S')
@@ -53,21 +47,76 @@ class _TimestampTypes:
 		filedate,
 		iso,
 	]
-	byname = {
-		t.name: t
-		for t in alltypes
-	}
+	byname = {t.name: t for t in alltypes}
 
 	@staticmethod
 	def getType(name):
 		return _TimestampTypes.byname.get(name)
 
+def TimestampTypeMenuSource():
+	return TDF.parMenu(
+		[t.name for t in _TimestampTypes.alltypes],
+		[t.label for t in _TimestampTypes.alltypes])
+
+class LogLevel:
+	def __init__(self, name, label, value):
+		self.name = name
+		self.label = label
+		self.value = value
+
+	@staticmethod
+	def _getValueOf(level: Union[str, int, 'LogLevel']):
+		if hasattr(level, 'value'):
+			return level.value
+		if isinstance(level, (int, float)):
+			return level
+		if isinstance(level, str):
+			return _LogLevels.getLevel(level).value
+		return 0
+
+	def matchesFilter(self, filterlevel: Union[str, int, 'LogLevel']):
+		filterlevel = LogLevel._getValueOf(filterlevel)
+		if not filterlevel or not self.value:
+			return True
+		return self.value >= filterlevel
+
+class _LogLevels:
+	notset = LogLevel('notset', 'Not Set', NOTSET)
+	debug = LogLevel('debug', 'Debug', DEBUG)
+	info = LogLevel('info', 'Info', INFO)
+	warning = LogLevel('warning', 'Warning', WARNING)
+	error = LogLevel('error', 'Error', ERROR)
+	critical = LogLevel('critical', 'Critical', CRITICAL)
+
+	levels = [
+		notset,
+		debug,
+		info,
+		warning,
+		error,
+		critical,
+	]
+
+	byname = {l.name: l for l in levels}
+
+	@staticmethod
+	def getLevel(val):
+		if isinstance(val, LogLevel):
+			return val
+		if not val:
+			return _LogLevels.notset
+		return _LogLevels.byname.get(val, _LogLevels.notset)
+
+def LogLevelMenuSource():
+	return TDF.parMenu(
+		[l.name for l in _LogLevels.levels],
+		[l.label for l in _LogLevels.levels])
 
 class Message:
 	def __init__(
 			self,
 			message: str=None,
-			level=INFO,
+			level: Union[str, LogLevel]=None,
 			timestamp: str=None,
 			oppath: str=None,
 			opid: str=None,
@@ -75,7 +124,7 @@ class Message:
 			indent: int=None,
 			**data):
 		self.message = message
-		self.level = level
+		self.level = _LogLevels.getLevel(level)
 		self.timestamp = timestamp
 		self.oppath = oppath
 		self.opid = opid
@@ -87,8 +136,8 @@ class Message:
 		return cleandict(mergedicts(
 			{
 				'message': self.message,
-				'level': self.level,
-				'levelname': getLevelName(self.level),
+				'level': self.level.value,
+				'levelname': self.level.name,
 				'timestamp': self.timestamp,
 				'oppath': self.oppath,
 				'opid': self.opid,
@@ -96,7 +145,7 @@ class Message:
 				'indent': self.indent,
 			}, self.data))
 
-	def toText(self, useindent=True, timestamptype: _TimestampType=None):
+	def toText(self, useindent=True, timestamptype: _TimestampType=None, includelevel=False):
 		if not self.message:
 			return ''
 		indentstr = ('\t' * self.indent) if useindent and self.indent else ''
@@ -112,14 +161,19 @@ class Message:
 			timestamp = self.timestamp or timestamptype.get()
 			if timestamp:
 				prefix = '[{}] {}'.format(timestamp, prefix)
+		if includelevel and self.level.value:
+			suffix = ' ({})'.format(self.level.name)
+		else:
+			suffix = ''
 		if prefix:
 			prefix += ' '
-		return prefix + indentstr + str(self.message)
+		return prefix + indentstr + str(self.message) + suffix
 
 
-class LogHandlerBase:
-	def __init__(self):
+class LoggerBase:
+	def __init__(self, ownerComp):
 		self._indent = 0
+		self.ownerComp = ownerComp
 
 	def _HandleMessage(self, message: Message):
 		raise NotImplementedError()
@@ -139,7 +193,10 @@ class LogHandlerBase:
 			message.indent = self._indent
 		return message
 
-	def HandleMessage(
+	def _ShouldHandleMessage(self, message: Message):
+		return message and message.level.matchesFilter(self.ownerComp.par.Loglevel.eval())
+
+	def LogMessage(
 			self,
 			messageordata: Union[Message, str, dict],
 			indentafter=False,
@@ -151,7 +208,7 @@ class LogHandlerBase:
 		message = self._PrepareMessage(messageordata)
 
 		try:
-			if message:
+			if self._ShouldHandleMessage(message):
 				self._HandleMessage(message)
 		finally:
 			if indentafter:
@@ -175,7 +232,7 @@ class LogHandlerBase:
 
 
 class Logger:
-	def __init__(self, ownerComp, handlers: List[LogHandlerBase]=None):
+	def __init__(self, ownerComp, handlers: List[LoggerBase]=None):
 		self.ownerComp = ownerComp
 		self.op = ownerComp.op
 		self.par = ownerComp.par
@@ -232,20 +289,25 @@ class Logger:
 		raise NotImplementedError()
 
 
-class PrintLogHandler(LogHandlerBase):
+class PrintLogger(LoggerBase):
 	def __init__(self, ownerComp):
-		super().__init__()
-		self.ownerComp = ownerComp
+		super().__init__(ownerComp)
 
 	def _GetFile(self):
 		return None
 
 	def _HandleMessage(self, message: Message):
-		text = message.toText(useindent=True, timestamptype=_TimestampTypes.getType(str(self.ownerComp.par.Timestamptype)))
+		text = message.toText(
+			useindent=True,
+			timestamptype=_TimestampTypes.getType(str(self.ownerComp.par.Timestamptype)),
+			includelevel=self.ownerComp.par.Includelevel)
 		if text:
 			print(text, file=self._GetFile())
+			msglog = self.ownerComp.op('message_log')
+			if msglog.par.maxlines:
+				msglog.appendRow([text])
 
-class ConsoleLogHandler(PrintLogHandler):
+class ConsoleLogger(PrintLogger):
 	pass
 
 
