@@ -17,6 +17,66 @@ PaneType.NETWORKEDITOR = None
 class project:
 	name = ''
 	folder = ''
+	saveVersion = ''
+	saveBuild = ''
+	saveTime = ''
+	saveOsName = ''
+	saveOsVersion = ''
+	paths = {}
+	cookRate = 0.0
+	realTime = True
+	isPrivate = False
+	isPrivateKey = False
+
+
+class _Monitor:
+	def __init__(self):
+		self.index = 0
+		self.isPrimary = False
+		self.isAffinity = False
+		self.width = 0
+		self.height = 0
+		self.left = 0
+		self.right = 0
+		self.top = 0
+		self.bottom = 0
+		self.displayName = ''
+		self.description = ''
+		self.dpiScale = 0.0
+		self.scaledWidth = 0
+		self.scaledHeight = 0
+		self.scaledLeft = 0
+		self.scaledRight = 0
+		self.scaledTop = 0
+		self.scaledBottom = 0
+		self.refreshRate = 0.0
+
+
+class _Monitors:
+	def __init__(self):
+		self.primary = _Monitor()
+		self.width = 0
+		self.height = 0
+		self.left = 0
+		self.right = 0
+		self.top = 0
+		self.bottom = 0
+
+	@staticmethod
+	def locate(x, y) -> _Monitor:
+		pass
+
+	@staticmethod
+	def refresh():
+		pass
+
+	def __len__(self):
+		return 0
+
+monitors = _Monitors()
+
+class sysinfo:
+	ram = 0.0
 
 class _Parent:
 	def __call__(self, *args, **kwargs):
@@ -80,6 +140,8 @@ class _TD_ERROR(Exception):
 
 class td:
 	error = _TD_ERROR
+	Monitor = _Monitor
+	Monitors = _Monitors
 
 	@staticmethod
 	def run(codeorwhatever, *args, delayFrames=0, delayMilliSeconds=0, delayRef=None): pass
@@ -247,3 +309,5 @@ class app:
 	launchTime = ''
 	product = ''
 	version = ''
+	osName = ''
+	osVersion = ''

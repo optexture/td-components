@@ -217,79 +217,112 @@ class LoggerBase:
 			if indentafter:
 				self._indent += 1
 
-	@staticmethod
-	def GetAppInfo():
-		return {
-			'build': app.build,
-			'launchtime': app.launchTime,
-			'product': app.product,
-			'version': app.version,
-		}
+class _InfoDetailLevels:
+	none = 0
+	basic = 1
+	detailed = 2
+	verbose = 3
 
-	@staticmethod
-	def GetSystemInfo():
-		return {
-			'hostname': socket.gethostname(),
-		}
+def _GetAppInfo(detaillevel=_InfoDetailLevels.basic):
+	if detaillevel <= _InfoDetailLevels.none:
+		return None
+	return {
+		'build': app.build,
+		'launchtime': app.launchTime,
+		'product': app.product,
+		'version': app.version,
+	}
 
+def _GetSystemInfo(detaillevel=_InfoDetailLevels.basic):
+	if detaillevel <= _InfoDetailLevels.none:
+		return None
+	info = {
+		'hostname': socket.gethostname(),
+		'osName': app.osName,
+		'osVersion': app.osVersion,
+	}
+	if detaillevel >= _InfoDetailLevels.detailed:
+		info.update({
+			'ramGB': round(sysinfo.ram / 1024 / 1024 / 1024, 4),
+		})
+	return info
 
+def _GetProjectInfo(detaillevel=_InfoDetailLevels.basic):
+	if detaillevel <= _InfoDetailLevels.none:
+		return None
+	info = {
+		'name': project.name,
+		'folder': project.folder,
+		'saveVersion': project.saveVersion,
+		'saveBuild': project.saveBuild,
+		'saveTime': project.saveTime,
+	}
+	if detaillevel >= _InfoDetailLevels.detailed:
+		info.update({
+			'saveOsName': project.saveOsName,
+			'saveOsVersion': project.saveOsVersion,
+		})
+	return info
 
-class __x_Logger:
-	def __init__(self, ownerComp, handlers: List[LoggerBase]=None):
-		self.ownerComp = ownerComp
-		self.op = ownerComp.op
-		self.par = ownerComp.par
-		self.handlers = list(handlers or [])
+def _GetMonitorsInfo(detaillevel=_InfoDetailLevels.basic):
+	if detaillevel <= _InfoDetailLevels.none:
+		return None
+	info = {
+		'primary': monitors.primary.index if monitors.primary is not None else -1,
+		'width': monitors.width,
+		'height': monitors.height,
+		'count': len(monitors),
+	}
+	if detaillevel >= _InfoDetailLevels.detailed:
+		info.update({
+			'left': monitors.left,
+			'right': monitors.right,
+			'top': monitors.top,
+			'bottom': monitors.bottom,
+			'monitors': [_GetMonitorInfo(m, detaillevel) for m in monitors]
+		})
+	return info
 
-	def _GetGlobals(self):
-		dat = self.op('global_vals')
-		return {
-			name.val: val.val
-			for name, val in dat.rows()
-		}
+def _GetMonitorInfo(m: 'td.Monitor', detaillevel=_InfoDetailLevels.basic):
+	if detaillevel < _InfoDetailLevels.detailed:
+		return None
+	info = {
+		'index': m.index,
+		'isPrimary': m.isPrimary,
+		'width': m.width,
+		'height': m.height,
+		'left': m.left,
+		'right': m.right,
+		'top': m.top,
+		'bottom': m.bottom,
+		'displayName': m.displayName,
+		'refreshRate': m.refreshRate,
+	}
+	if detaillevel > _InfoDetailLevels.verbose:
+		info.update({
+			'isAffinity': m.isAffinity,
+			'description': m.description,
+			'dpiScale': m.dpiScale,
+			'scaledWidth': m.scaledWidth,
+			'scaledHeight': m.scaledHeight,
+			'scaledLeft': m.scaledLeft,
+			'scaledRight': m.scaledRight,
+			'scaledTop': m.scaledTop,
+			'scaledBottom': m.scaledBottom,
+		})
+	return info
 
-	@staticmethod
-	def _GetAppInfo():
-		return {
-			'td_app': {
-				'build': app.build,
-				'launchtime': app.launchTime,
-				'product': app.product,
-				'version': app.version,
-			}
-		}
-
-	@staticmethod
-	def _GetSystemInfo():
-		return {
-			'sys': {
-				'hostname': socket.gethostname(),
-			}
-		}
-
-	@staticmethod
-	def _GetTimestamp():
-		return datetime.now().isoformat()
-
-	def _PrepareMessage(self, messageordata: Union[str, dict]=None, data: dict=None):
-		return cleandict(mergedicts(
-			self._GetGlobals(),
-			self._GetAppInfo(),
-			self._GetSystemInfo(),
-			{'timestamp': self._GetTimestamp()},
-			messageordata if isinstance(messageordata, dict) else {'message': messageordata},
-			data))
-
-	def SendMessage(self, messageordata: Union[str, dict]=None, data: dict=None):
-		msgobj = self._PrepareMessage(messageordata, data)
-		msgjson = json.dumps(msgobj)
-		self.op('set_message_json').text = msgjson
-		web = self.op('web')
-		web.text = ''
-		web.par.submitfetch.pulse()
-
-	def LogEvent(self, path, opid, event, indentafter=False, unindentbefore=False):
-		raise NotImplementedError()
+def _BuildInfo(
+		applevel=_InfoDetailLevels.basic,
+		syslevel=_InfoDetailLevels.basic,
+		projectlevel=_InfoDetailLevels.basic,
+		monitorslevel=_InfoDetailLevels.none):
+	return cleandict({
+		'app': _GetAppInfo(applevel),
+		'sys': _GetSystemInfo(syslevel),
+		'project': _GetProjectInfo(projectlevel),
+		'monitors': _GetMonitorsInfo(monitorslevel),
+	})
 
 
 class PrintLogger(LoggerBase):
@@ -362,7 +395,63 @@ class MultiLogger(LoggerBase):
 			except Exception as err:
 				errmessage = 'ERROR in logger [{}]: {}'.format(logger, err)
 				print(errmessage)
-				self.ownerComp.addError(errmessage)
+				self.ownerComp.addScriptError(errmessage)
+
+class LogglyLogger(LoggerBase):
+	def __init__(self, ownerComp):
+		super().__init__(ownerComp)
+		self.webdat = self.ownerComp.op('web')
+		self.msgjsondat = self.ownerComp.op('set_message_json')
+
+	def _PrepareMessage(self, messageordata: Union[Message, str, dict]):
+		message = super()._PrepareMessage(messageordata)
+		if not message:
+			return None
+		info = self._BuildInfo()
+		if info:
+			message.data.update(info)
+		return message
+
+	def _BuildInfo(self):
+		return _BuildInfo(
+			applevel=self.ownerComp.par.Appinfolevel.menuIndex,
+			syslevel=self.ownerComp.par.Sysinfolevel.menuIndex,
+			projectlevel=self.ownerComp.par.Projectinfolevel.menuIndex,
+			monitorslevel=self.ownerComp.par.Monitorinfolevel.menuIndex,
+		)
+
+	def HandleMessage(self, message: Message):
+		if not self.ownerComp.par.Endpointurl:
+			self.ownerComp.addWarning('No endpoint URL set for logger')
+			return
+		msgobj = message.toDict()
+		if not msgobj:
+			return
+		msgjson = json.dumps(msgobj)
+		self.msgjsondat.text = msgjson
+		self.webdat.text = ''
+		self.webdat.par.submitfetch.pulse()
+
+	def HandleResponse(self, text):
+		success = self._IsSuccessResponse(text)
+		if success is None:
+			return
+		if success:
+			self.ownerComp.clearScriptErrors(recurse=False, error='LogglyLogger*')
+		else:
+			self.ownerComp.addScriptError('LogglyLogger: ' + text)
+
+	@staticmethod
+	def _IsSuccessResponse(text):
+		if not text:
+			return None
+		if text == '{"response" : "ok"}':
+			return True
+		if text.startswith('{'):
+			obj = json.loads(text)
+			if obj.get('response') == 'ok':
+				return True
+		return False
 
 
 def cleandict(d):
