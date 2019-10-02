@@ -175,7 +175,7 @@ class LoggerBase:
 		self._indent = 0
 		self.ownerComp = ownerComp
 
-	def _HandleMessage(self, message: Message):
+	def HandleMessage(self, message: Message):
 		raise NotImplementedError()
 
 	def _PrepareMessage(self, messageordata: Union[Message, str, dict]):
@@ -196,7 +196,10 @@ class LoggerBase:
 	def _ShouldHandleMessage(self, message: Message):
 		return message and message.level.matchesFilter(self.ownerComp.par.Loglevel.eval())
 
-	def LogMessage(
+	def SetIndent(self, indent: int):
+		self._indent = indent
+
+	def Log(
 			self,
 			messageordata: Union[Message, str, dict],
 			indentafter=False,
@@ -209,7 +212,7 @@ class LoggerBase:
 
 		try:
 			if self._ShouldHandleMessage(message):
-				self._HandleMessage(message)
+				self.HandleMessage(message)
 		finally:
 			if indentafter:
 				self._indent += 1
@@ -231,7 +234,7 @@ class LoggerBase:
 
 
 
-class Logger:
+class __x_Logger:
 	def __init__(self, ownerComp, handlers: List[LoggerBase]=None):
 		self.ownerComp = ownerComp
 		self.op = ownerComp.op
@@ -293,7 +296,7 @@ class PrintLogger(LoggerBase):
 	def __init__(self, ownerComp):
 		super().__init__(ownerComp)
 
-	def _HandleMessage(self, message: Message):
+	def HandleMessage(self, message: Message):
 		text = message.toText(
 			useindent=True,
 			timestamptype=_TimestampTypes.getType(str(self.ownerComp.par.Timestamptype)),
@@ -341,6 +344,25 @@ class FileLogger(PrintLogger):
 		if not self._file:
 			self._InitializeFile()
 		print(text, file=self._file, flush=True)
+
+class MultiLogger(LoggerBase):
+	def __init__(self, ownerComp):
+		super().__init__(ownerComp)
+		self.loggers = []  # type: List[LoggerBase]
+		self.AttachLoggers()
+
+	def AttachLoggers(self):
+		self.loggers = [self.ownerComp.op('./console_logger'), self.ownerComp.op('./file_logger')]
+		self.loggers += self.ownerComp.par.Loggers.evalOPs() or []
+
+	def HandleMessage(self, message: Message):
+		for logger in self.loggers:
+			try:
+				logger.HandleMessage(message)
+			except Exception as err:
+				errmessage = 'ERROR in logger [{}]: {}'.format(logger, err)
+				print(errmessage)
+				self.ownerComp.addError(errmessage)
 
 
 def cleandict(d):
