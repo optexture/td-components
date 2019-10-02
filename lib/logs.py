@@ -1,10 +1,11 @@
 print('loading logs.py...')
 
-from typing import Callable, Dict, Union, List
+from typing import Any, Callable, Dict, Iterable, Union, List, Optional
 from datetime import datetime
 import json
 import socket
 from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET
+from copy import deepcopy
 
 if False:
 	from _stubs import *
@@ -80,6 +81,9 @@ class LogLevel:
 			return True
 		return self.value >= filterlevel
 
+	def __bool__(self):
+		return bool(self.value)
+
 class _LogLevels:
 	notset = LogLevel('notset', 'Not Set', NOTSET)
 	debug = LogLevel('debug', 'Debug', DEBUG)
@@ -112,11 +116,13 @@ def LogLevelMenuSource():
 		[l.name for l in _LogLevels.levels],
 		[l.label for l in _LogLevels.levels])
 
+_LogLevelOrStrT = Union[str, LogLevel]
+
 class Message:
 	def __init__(
 			self,
 			message: str=None,
-			level: Union[str, LogLevel]=None,
+			level: _LogLevelOrStrT=None,
 			timestamp: str=None,
 			oppath: str=None,
 			opid: str=None,
@@ -169,16 +175,12 @@ class Message:
 			prefix += ' '
 		return prefix + indentstr + str(self.message) + suffix
 
+_MessageOrDataT = Union[Message, str, dict]
 
-class LoggerBase:
-	def __init__(self, ownerComp):
-		self._indent = 0
-		self.ownerComp = ownerComp
+class LoggableBase:
 
-	def HandleMessage(self, message: Message):
-		raise NotImplementedError()
-
-	def _PrepareMessage(self, messageordata: Union[Message, str, dict]):
+	@staticmethod
+	def _PrepareLogMessage(messageordata: _MessageOrDataT, level: _LogLevelOrStrT=None):
 		if not messageordata:
 			return None
 		elif isinstance(messageordata, Message):
@@ -189,7 +191,40 @@ class LoggerBase:
 			message = Message(**messageordata)
 		else:
 			message = Message(str(messageordata))
-		if message.indent is None:
+		if level is not None and not message.level:
+			message.level = _LogLevels.getLevel(level)
+		return message
+
+	def Log(
+			self,
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
+			indentafter=False,
+			unindentbefore=False,
+	):
+		raise NotImplementedError()
+
+	def LogBegin(self, message, level=None):
+		self.Log(message, indentafter=True, level=level)
+
+	def LogEnd(self, message=None, level=None):
+		self.Log(message, unindentbefore=True, level=level)
+
+class LoggerBase(LoggableBase):
+	def __init__(self, ownerComp):
+		self._indent = 0
+		self.ownerComp = ownerComp
+
+	def HandleMessage(self, message: Message):
+		raise NotImplementedError()
+
+	def _PrepareMessage(
+			self,
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
+	):
+		message = super()._PrepareLogMessage(messageordata, level=level)
+		if message and message.indent is None:
 			message.indent = self._indent
 		return message
 
@@ -201,14 +236,15 @@ class LoggerBase:
 
 	def Log(
 			self,
-			messageordata: Union[Message, str, dict],
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
 			indentafter=False,
 			unindentbefore=False,
 	):
 		if unindentbefore:
 			self._indent -= 1
 
-		message = self._PrepareMessage(messageordata)
+		message = self._PrepareMessage(messageordata, level=level)
 
 		try:
 			if self._ShouldHandleMessage(message):
@@ -391,7 +427,7 @@ class MultiLogger(LoggerBase):
 	def HandleMessage(self, message: Message):
 		for logger in self.loggers:
 			try:
-				logger.HandleMessage(message)
+				logger.HandleMessage(deepcopy(message))
 			except Exception as err:
 				errmessage = 'ERROR in logger [{}]: {}'.format(logger, err)
 				print(errmessage)
@@ -403,8 +439,12 @@ class LogglyLogger(LoggerBase):
 		self.webdat = self.ownerComp.op('web')
 		self.msgjsondat = self.ownerComp.op('set_message_json')
 
-	def _PrepareMessage(self, messageordata: Union[Message, str, dict]):
-		message = super()._PrepareMessage(messageordata)
+	def _PrepareMessage(
+			self,
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
+	):
+		message = super()._PrepareMessage(messageordata, level=level)
 		if not message:
 			return None
 		info = self._BuildInfo()
@@ -469,3 +509,112 @@ def mergedicts(*parts):
 		if part:
 			x.update(part)
 	return x
+
+class LoggableExtension(LoggableBase):
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
+		self.logId = self._GetLogId()
+		self.getlogger = lambda: None  # type: Callable[[], Optional[LoggerBase]]
+		if hasattr(ownerComp.par, 'Logger'):
+			self.getlogger = lambda: self.ownerComp.par.Logger.eval()
+		elif hasattr(op, 'Logger'):
+			self.getlogger = lambda: op.Logger
+
+	def _GetLogId(self) -> Optional[str]:
+		if not self.ownerComp.valid or not hasattr(self.ownerComp.par, 'opshortcut'):
+			return None
+		return self.ownerComp.par.opshortcut.eval()
+
+	def _PrepareLogMessage(
+			self,
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
+	):
+		message = super()._PrepareLogMessage(messageordata, level=level)
+		if not message:
+			return None
+		message.opid = message.opid or self.logId
+		message.oppath = message.oppath or self.ownerComp.path
+		return message
+
+	def Log(
+			self,
+			messageordata: _MessageOrDataT,
+			level: _LogLevelOrStrT=None,
+			indentafter=False,
+			unindentbefore=False,
+	):
+		message = self._PrepareLogMessage(messageordata, level=level)
+		logger = self.getlogger()  # type: LoggerBase
+		if logger:
+			logger.Log(message, indentafter=indentafter, unindentbefore=unindentbefore)
+
+def _FormatArgLimited(arg, limit):
+	s = repr(arg)
+	if len(s) > limit:
+		return s[0:(limit-3)] + '...'
+	return s
+
+class _LoggedMethodDecorator:
+	def __init__(
+			self,
+			level: _LogLevelOrStrT=_LogLevels.info,
+			omitargs: Union[Iterable[str], bool]=None,
+			limitarglength: Optional[int]=100,
+			verboseend=False,
+		):
+		self.level = _LogLevels.getLevel(level)
+		self.verboseend = verboseend
+		self.formatargs = None  # type: Callable[[Iterable, dict], str]
+		if omitargs is True:
+			self.formatargs = lambda args, kwargs: ''
+		else:
+			argstoskip = omitargs or []
+			if limitarglength:
+				def formatsinglearg(arg): _FormatArgLimited(arg, limitarglength)
+			else:
+				formatsinglearg = repr
+
+			def _formatargs(args, kwargs):
+				text = ''
+				if args:
+					text = ', '.join(formatsinglearg(arg) for arg in args)
+				if kwargs:
+					if text:
+						text += ', '
+					text += ', '.join(
+						name + ': ' + formatsinglearg(val)
+						for name, val
+						in kwargs.items()
+						if name not in argstoskip
+					)
+				return text
+			self.formatargs = _formatargs
+
+	def __call__(self, func):
+		def _wrapped(selfobj: LoggableBase, *args, **kwargs):
+			messagetext = '{}({})'.format(func.__name__, self.formatargs(args, kwargs))
+			selfobj.LogBegin(messagetext, level=self.level)
+			try:
+				return func(selfobj, *args, **kwargs)
+			finally:
+				selfobj.LogEnd(messagetext if self.verboseend else None, level=self.level)
+		return _wrapped
+
+def customloggedmethod(
+		level: _LogLevelOrStrT=_LogLevels.info,
+		omitargs: Union[Iterable[str], bool]=None,
+		limitarglength: Optional[int]=100,
+		verboseend=False,
+):
+	return _LoggedMethodDecorator(
+		level=level,
+		omitargs=omitargs,
+		limitarglength=limitarglength,
+		verboseend=verboseend)
+
+def loggedmethod(func):
+	return _LoggedMethodDecorator()(func)
+
+def simpleloggedmethod(func):
+	return _LoggedMethodDecorator(omitargs=True)(func)
