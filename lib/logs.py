@@ -1,3 +1,4 @@
+# t3kt/td-components/logs.py
 print('loading logs.py...')
 
 from typing import Any, Callable, Dict, Iterable, Union, List, Optional
@@ -84,6 +85,12 @@ class LogLevel:
 	def __bool__(self):
 		return bool(self.value)
 
+	def __repr__(self):
+		return '{}({}, {}, {})'.format(type(self), self.name, self.label, self.value)
+
+	def __str__(self):
+		return self.name
+
 class _LogLevels:
 	notset = LogLevel('notset', 'Not Set', NOTSET)
 	debug = LogLevel('debug', 'Debug', DEBUG)
@@ -109,7 +116,9 @@ class _LogLevels:
 			return val
 		if not val:
 			return _LogLevels.notset
-		return _LogLevels.byname.get(val, _LogLevels.notset)
+		if hasattr(val, 'name'):
+			val = val.name
+		return _LogLevels.byname.get(str(val), _LogLevels.notset)
 
 def LogLevelMenuSource():
 	return TDF.parMenu(
@@ -354,6 +363,7 @@ def _BuildInfo(
 		projectlevel=_InfoDetailLevels.basic,
 		monitorslevel=_InfoDetailLevels.none):
 	return cleandict({
+		'LOL': 'foooo',
 		'app': _GetAppInfo(applevel),
 		'sys': _GetSystemInfo(syslevel),
 		'project': _GetProjectInfo(projectlevel),
