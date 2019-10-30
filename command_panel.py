@@ -411,6 +411,48 @@ def _incrementComponentVersion(context: Context):
 		par.val += 1
 		par.default = par.val
 
+def _makeLastPage(comp, page):
+	if len(comp.customPages) == 1 and comp.customPages[0] == page:
+		return
+	orderedpages = [p.name for p in comp.customPages if p != page] + [page.name]
+	comp.sortCustomPages(*orderedpages)
+
+def _addOrUpdatePar(appendmethod, name, label, value=None, expr=None, readonly=None, setdefault=False):
+	p = appendmethod(name, label=label)[0]
+	if expr is not None:
+		p.expr = expr
+		if setdefault:
+			p.defaultExpr = expr
+	elif value is not None:
+		p.val = value
+		if setdefault:
+			p.default = value
+	if readonly is not None:
+		p.readOnly = readonly
+	return p
+
+def _addOrUpdateMetadataPar(appendmethod, name, label, value):
+	_addOrUpdatePar(appendmethod, name, label, value, readonly=True, setdefault=True)
+
+def _setComponentMetadata(
+		comp,
+		description=None,
+		version=None,
+		typeid=None,
+		website=None,
+		author=None,
+		page=':meta'):
+	page = comp.appendCustomPage(page)
+	if page.startswith(':'):
+		_makeLastPage(comp, page)
+	if typeid:
+		_addOrUpdateMetadataPar(page.appendStr, 'Comptypeid', ':Type ID', typeid)
+	_addOrUpdateMetadataPar(page.appendStr, 'Compdescription', ':Description', description)
+	_addOrUpdateMetadataPar(page.appendInt, 'Compversion', ':Version', version)
+	_addOrUpdateMetadataPar(page.appendStr, 'Compwebsite', ':Website', website)
+	_addOrUpdateMetadataPar(page.appendStr, 'Compauthor', ':Author', author)
+	page.sort('Comptypeid', 'Compdescription', 'Compversion', 'Compwebsite', 'Compauthor')
+
 _basicToolCommands = [
 	Command.forAction(
 		_copyPaths,
@@ -424,5 +466,5 @@ _basicToolCommands = [
 		_incrementComponentVersion,
 		label='version++',
 		help='increment the component version attribute on selected or active',
-	)
+	),
 ]
