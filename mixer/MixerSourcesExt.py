@@ -1,0 +1,3 @@
+
+class MixerSourcesExt:
+	pass
