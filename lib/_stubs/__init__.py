@@ -302,17 +302,43 @@ class Cell:
 	col: int
 
 _NameOrIndex = _T.Union[str, int]
+_NamesOrIndices = _T.Iterable[_NameOrIndex]
 
 class DAT(OP):
-	def row(self, nameorindex) -> _T.List[Cell]: pass
-	def col(self, nameorindex) -> _T.List[Cell]: pass
-	def clear(self): pass
+	def row(self, *nameorindex: _NameOrIndex, caseSensitive=True) -> _T.List[Cell]: pass
+	def col(self, *nameorindex: _NameOrIndex, caseSensitive=True) -> _T.List[Cell]: pass
+	def rows(self, *nameorindex: _NameOrIndex, caseSensitive=True) -> _T.List[_T.List[Cell]]: pass
+	def cols(self, *nameorindex: _NameOrIndex, caseSensitive=True) -> _T.List[_T.List[Cell]]: pass
+	def clear(self, keepSize=False, keepFirstRow=False, keepFirstCol=False): pass
+	def copy(self, dat: 'DAT'): pass
 	def appendRow(self, cells: _T.List[Cell]): pass
 	def appendCol(self, cells: _T.List[Cell]): pass
 	def appendRows(self, cells: _T.List[_T.List[Cell]]): pass
 	def appendCols(self, cells: _T.List[_T.List[Cell]]): pass
+	def setSize(self, numrows: int, numcols: int): pass
 	def __getitem__(self, row: _NameOrIndex, col: _NameOrIndex) -> Cell: pass
 	def __setitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex], value): pass
+	def cell(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> Cell: pass
+	def cells(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> _T.List[Cell]: pass
+	def findCell(
+			self,
+			pattern: str,
+			rows: _T.Optional[_NamesOrIndices] = None,
+			cols: _T.Optional[_NamesOrIndices] = None,
+			valuePattern=True, rowPattern=True, colPattern=True, caseSensitive=False) -> _T.Optional[Cell]: pass
+	def findCells(
+			self,
+			pattern: str,
+			rows: _T.Optional[_NamesOrIndices] = None,
+			cols: _T.Optional[_NamesOrIndices] = None,
+			valuePattern=True, rowPattern=True, colPattern=True, caseSensitive=False) -> _T.List[Cell]: pass
+	module: _T.Any
+	numRows: int
+	numCols: int
+	text: str
+	isTable: bool
+	isText: bool
+	locals: _T.Dict[str, _T.Any]
 
 COMP = OP
 CHOP = OP
