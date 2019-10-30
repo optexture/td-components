@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+import dataclasses
+from typing import Any, Dict
+
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
@@ -7,11 +11,19 @@ class MixerSourcesExt:
 	def __init__(self, ownerComp: 'COMP'):
 		self.ownerComp = ownerComp
 
-# TODO: use dataclasses once I stop caring about supporting TD 2019.10000 series builds
+def PrepareOpSources(indat: 'DAT', dat: 'DAT'):
+	dat.clear()
+	dat.appendRow(_sourceColumns)
+	if not indat:
+		return
+
+	pass
+
+@dataclass
 class Source:
-	sourceName: str
-	legalName: str
-	path: str
+	legalName: str = None
+	sourceName: str = None
+	path: str = None
 	shortName: str = None
 	compPath: str = None
 	videoPath: str = None
@@ -21,40 +33,38 @@ class Source:
 	streaming: bool = None
 	fps: int = None
 	url: str = None
+	extraFields: Dict[str, Any] = None
 
-	@classmethod
-	def fieldNames(cls):
-		return [
-			'sourceName',
-			'legalName',
-			'path',
-			'shortName',
-			'compPath',
-			'videoPath',
-			'type',
-			'deviceName',
-			'active',
-			'streaming',
-			'fps',
-			'url',
-		]
+	def appendToRow(self, dat: 'DAT'):
+		data = dict(dataclasses.asdict(self))
+		if self.extraFields:
+			data.update(self.extraFields)
+		addDictRow(dat, data)
 
-	def asTuple(self):
-		return [
-			x if x is not None else ''
-			for x in [
-				self.sourceName,
-				self.legalName,
-				self.path,
-				self.shortName,
-				self.compPath,
-				self.videoPath,
-				self.type,
-				self.deviceName,
-				self.active,
-				self.streaming,
-				self.fps,
-				self.url,
-			]
-		]
+_sourceColumns = dataclasses.fields(Source)
 
+NULL_PLACEHOLDER = '_'
+
+def formatValue(val, nonevalue=NULL_PLACEHOLDER):
+	if isinstance(val, str):
+		return val
+	if val is None:
+		return nonevalue
+	if isinstance(val, bool):
+		return str(int(val))
+	if isinstance(val, float) and int(val) == val:
+		return str(int(val))
+	return str(val)
+
+def addDictRow(dat, obj: Dict[str, Any]):
+	r = dat.numRows
+	dat.appendRow([])
+	setDictRow(dat, r, obj)
+
+def setDictRow(dat, rowkey: Union[str, int], obj: Dict[str, Any], clearmissing=False):
+	for key, val in obj.items():
+		dat[rowkey, key] = formatValue(val, nonevalue='')
+	if clearmissing:
+		for col in dat.row(0):
+			if col.val not in obj:
+				col.val = ''
