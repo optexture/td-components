@@ -1,29 +1,56 @@
 from dataclasses import dataclass
 import dataclasses
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
 
-class MixerSourcesExt:
-	def __init__(self, ownerComp: 'COMP'):
-		self.ownerComp = ownerComp
-
-def PrepareOpSources(indat: 'DAT', dat: 'DAT'):
+def PrepareOpSources(dat: 'DAT', paths: List[str]):
 	dat.clear()
 	dat.appendRow(_sourceColumns)
-	if not indat:
+	if not paths:
 		return
+	srcops = ops(*paths)
+	for o in srcops:
+		src = _Source(
+			path=o.path,
+			legalName=o.name,
+			shortName=o.name,
+			type='OP',
+		)
+		if o.isTOP:
+			src.videoPath = o.path
+			src.compPath = o.parent().path
+		elif o.isCOMP:
+			vidop = _getCompVideoSource(o)
+			src.videoPath = vidop.path if vidop else None
+			src.compPath = o.path
+		else:
+			continue
+		src.appendToRow(dat)
 
-	pass
+def _getCompVideoSource(o):
+	if o and o.isCOMP:
+		for pattern in [
+			'out1',
+			'video_out',
+			'*_out',
+			'out*',
+			'*out',
+		]:
+			for out in o.ops(pattern):
+				if out.isTOP:
+					return out
+			pass
+	return None
 
 @dataclass
-class Source:
+class _Source:
+	path: str = None
 	legalName: str = None
 	sourceName: str = None
-	path: str = None
 	shortName: str = None
 	compPath: str = None
 	videoPath: str = None
@@ -37,11 +64,34 @@ class Source:
 
 	def appendToRow(self, dat: 'DAT'):
 		data = dict(dataclasses.asdict(self))
+		if 'extraFields' in data:
+			del data['extraFields']
 		if self.extraFields:
 			data.update(self.extraFields)
 		addDictRow(dat, data)
 
-_sourceColumns = dataclasses.fields(Source)
+_sourceColumns = [f.name for f in dataclasses.fields(_Source) if f.name != 'extraFields']
+
+def GetSourceColumns():
+	return _sourceColumns
+
+def GetSourcesTable(o):
+	if not o:
+		return None
+	if o.isDAT:
+		return o
+	if not o.isCOMP:
+		return None
+	if hasattr(o.par, 'Sourcetable'):
+		src = o.par.Sourcetable.eval()
+		if src and src.isDAT:
+			return src
+	src = o.op('sources')
+	if src and src.isDAT:
+		return src
+	return None
+
+
 
 NULL_PLACEHOLDER = '_'
 
