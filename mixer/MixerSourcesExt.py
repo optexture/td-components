@@ -1,13 +1,47 @@
 from dataclasses import dataclass
 import dataclasses
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Iterable, List, Union
 
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
 
-def PrepareOpSources(dat: 'DAT', paths: List[str]):
+class SourceTrack:
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
+
+	@property
+	def SourcesTable(self):
+		o = self.ownerComp.par.Sources.eval()
+		if not o:
+			return None
+		if o.isDAT:
+			return o
+		if not o.isCOMP:
+			return None
+		if hasattr(o.par, 'Sourcetable'):
+			src = o.par.Sourcetable.eval()
+			if src and src.isDAT:
+				return src
+		src = o.op('sources')
+		if src and src.isDAT:
+			return src
+		return None
+
+	@staticmethod
+	def PrepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
+		_prepareOpSources(dat, paths)
+
+class MixerSources:
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
+
+	@staticmethod
+	def PrepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
+		_prepareOpSources(dat, paths)
+
+def _prepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
 	dat.clear()
 	dat.appendRow(_sourceColumns)
 	if not paths:
@@ -17,9 +51,10 @@ def PrepareOpSources(dat: 'DAT', paths: List[str]):
 		src = _Source(
 			path=o.path,
 			legalName=o.name,
-			shortName=o.name,
 			type='OP',
 		)
+		src.label = _firstStringPar(o, 'Label', 'Uilabel', 'Name') or o.name
+		src.shortName = _firstStringPar(o, 'Shortlabel', 'Shortname') or src.label
 		if o.isTOP:
 			src.videoPath = o.path
 			src.compPath = o.parent().path
@@ -46,12 +81,27 @@ def _getCompVideoSource(o):
 			pass
 	return None
 
+def _firstStringPar(o, *names):
+	if not o:
+		return None
+	for par in o.pars(*names):
+		if par:
+			return par.eval()
+
+def _getOPSourceLabel(o):
+	return _firstStringPar(o, 'Label', '')
+	label = getattr(o.par, 'Label')
+	if hasattr(o.par, 'Label'):
+		return o.par.Label.eval()
+	pass
+
 @dataclass
 class _Source:
 	path: str = None
 	legalName: str = None
 	sourceName: str = None
 	shortName: str = None
+	label: str = None
 	compPath: str = None
 	videoPath: str = None
 	type: str = None
@@ -71,26 +121,6 @@ class _Source:
 		addDictRow(dat, data)
 
 _sourceColumns = [f.name for f in dataclasses.fields(_Source) if f.name != 'extraFields']
-
-def GetSourceColumns():
-	return _sourceColumns
-
-def GetSourcesTable(o):
-	if not o:
-		return None
-	if o.isDAT:
-		return o
-	if not o.isCOMP:
-		return None
-	if hasattr(o.par, 'Sourcetable'):
-		src = o.par.Sourcetable.eval()
-		if src and src.isDAT:
-			return src
-	src = o.op('sources')
-	if src and src.isDAT:
-		return src
-	return None
-
 
 
 NULL_PLACEHOLDER = '_'
