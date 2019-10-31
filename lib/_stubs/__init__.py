@@ -85,12 +85,15 @@ class _Parent:
 	def __call__(self, *args, **kwargs) -> '_AnyOpT': pass
 	def __getattr__(self, item) -> '_AnyOpT': pass
 
+parent: _Parent
+
 class OP:
 	id: int
 	path: str
 	name: str
 	par: _T.Any
 	customTuplets: _T.List[_T.Tuple['Par']]
+	customPages: _T.List[_T.Any]  # TODO: add td.Page stub
 	parent: '_Parent'
 	storage: _T.Dict[str, _T.Any]
 	isBase: bool
