@@ -33,6 +33,24 @@ class SourceTrack:
 	def PrepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
 		_prepareOpSources(dat, paths)
 
+	@property
+	def SourceButtonLabels(self):
+		wrapcount = int(self.ownerComp.par.Sourcebuttonwrapchars)
+		sources = self.ownerComp.op('sources')  # type: DAT
+		labels = [
+			str(sources[i, 'label'] or sources[i, 'shortName'] or sources[i, 'legalName'] or '-')
+			for i in range(1, sources.numRows)
+		]
+		if wrapcount <= 0:
+			return labels
+		return [_wrapString(s, wrapcount) for s in labels]
+
+def _wrapString(s, wraplen):
+	strlen = len(s)
+	if strlen <= wraplen:
+		return s
+	return r'\n'.join([s[i:i + wraplen] for i in range(0, strlen, wraplen)])
+
 class MixerSources:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp
@@ -87,13 +105,6 @@ def _firstStringPar(o, *names):
 	for par in o.pars(*names):
 		if par:
 			return par.eval()
-
-def _getOPSourceLabel(o):
-	return _firstStringPar(o, 'Label', '')
-	label = getattr(o.par, 'Label')
-	if hasattr(o.par, 'Label'):
-		return o.par.Label.eval()
-	pass
 
 @dataclass
 class _Source:
