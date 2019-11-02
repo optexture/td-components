@@ -34,17 +34,41 @@ global_slider	*	Sliderindicatorcolorr	0.325
 global_slider	*	Sliderindicatorcolorg	0.325
 global_slider	*	Sliderindicatorcolorb	0.325
 global_slider	*	Sliderindicatorcolora	1.0
-dropfield	*_dropfield	Buttonfontsize	16
-dropfield	*_dropfield	Buttonfontbold	1
+button	*_button	Buttonfont	'Roboto'
+buttonicon	*_buttonicon	Buttonfont	'Material Design Icons'
 dropfield	*_dropfield	Buttonfont	'Material Design Icons'
+radio	*_radio	Radiofont	'Roboto'
+radio	*_radio	Radiobasecolorr	0.0
+radio	*_radio	Radiobasecolorg	0.0
+radio	*_radio	Radiobasecolorb	0.0
+radio	*_radio	Radiobasecolora	0.0
+radio	*_radio	Radioofffacecolorr	0.28
+radio	*_radio	Radioofffacecolorg	0.28
+radio	*_radio	Radioofffacecolorb	0.28
+radio	*_radio	Radioofffacecolora	1.0
+radio	*_radio	Radioonfacecolorr	0.3276
+radio	*_radio	Radioonfacecolorg	0.52
+radio	*_radio	Radioonfacecolorb	0.343633
+radio	*_radio	Radioonfacecolora	1.0
+radio	*_radio	Radioofffontcolorr	0.5
+radio	*_radio	Radioofffontcolorg	0.5
+radio	*_radio	Radioofffontcolorb	0.5
+radio	*_radio	Radioofffontcolora	1.0
+radio	*_radio	Radioonfontcolorr	0.8
+radio	*_radio	Radioonfontcolorg	0.8
+radio	*_radio	Radioonfontcolorb	0.8
+radio	*_radio	Radioonfontcolora	1.0
+radio	*_radio	Radioborderacolorr	1.0
+radio	*_radio	Radioborderacolorg	1.0
+radio	*_radio	Radioborderacolorb	1.0
+radio	*_radio	Radioborderacolora	1.0
+radio	*_radio	Radioborderbcolorr	0.0
+radio	*_radio	Radioborderbcolorg	0.0
+radio	*_radio	Radioborderbcolorb	0.0
+radio	*_radio	Radioborderbcolora	1.0
 section	*_section	Buttonfont	'Material Design Icons'
-section	*_section	Buttonfontsize	14
-section	*_section	Buttonfontbold	0
-toggle	*_toggle	Buttonfontsize	9
-toggle	*_toggle	Buttonfontbold	1
 toggle	*_toggle	Buttonfont	'Roboto'
-trigger	*_trigger	Buttonfontsize	9
-trigger	*_trigger	Buttonfontbold	1
+toggleicon	*_toggleicon	Buttonfont	'Material Design Icons'
 trigger	*_trigger	Buttonfont	'Roboto'
 global_toggle	*	Buttonbasecolorr	0.0
 global_toggle	*	Buttonbasecolorg	0.0
@@ -71,3 +95,7 @@ global_toggle	*	Buttonbordercolorg	1.0
 global_toggle	*	Buttonbordercolorb	1.0
 global_toggle	*	Buttonbordercolora	1.0
 section	*_section	Buttontype	'Toggle Down'
+overlay	*_overlay	Markercolorr	0.3276
+overlay	*_overlay	Markercolorg	0.52
+overlay	*_overlay	Markercolorb	0.343633
+overlay	*_overlay	Markercolora	1.0
