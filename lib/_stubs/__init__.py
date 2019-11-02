@@ -569,6 +569,17 @@ parameterCHOP = nullCHOP = selectCHOP = CHOP
 scriptSOP = SOP
 animationCOMP = COMP
 
+
+class scriptCHOP(CHOP):
+	def destroyCustomPars(self): pass
+	def sortCustomPages(self, *pages): pass
+	def clear(self): pass
+	def appendCustomPage(self, name: str) -> 'Page': pass
+	# noinspection PyMethodOverriding
+	def copy(self, chop: CHOP): pass
+	def appendChan(self, name: str) -> 'Channel': pass
+
+
 class App:
 	name: str
 	build: str
