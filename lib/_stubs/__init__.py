@@ -18,8 +18,68 @@ PaneType.NETWORKEDITOR = None
 ext = _Expando()  # type: _T.Any
 
 class UI:
-	panes: _T.Any
+	clipboard: str
+	colors: _T.Any #td.Colors
+	dpiBiCubicFilter: bool
+	masterVolume: float
+	options: _T.Any #td.Options
+	panes: _T.Any #td.Panes
+	performMode: bool
+	preferences: _T.Any #td.Preferences
+	redrawMainWindow: bool
+	rolloverOp: 'OP'
+	rolloverPar: 'Par'
+	lastChopChannelSelected: 'Par'
+	showPaletteBrowser: bool
 	status: str
+	undo: 'Undo'
+
+	def copyOPs(self, listOfOPs): pass
+	# noinspection PyShadowingNames
+	def pasteOPs(self, COMP, x=None, y=None): pass
+	# noinspection PyDefaultArgument
+	def messageBox(self, title, message, buttons=['Ok'])-> int: pass
+	def refresh(self): pass
+	def chooseFile(self, load=True, start=None, fileTypes=None, title=None, asExpression=False) -> _T.Optional[str]: pass
+	def chooseFolder(self, title='Select Folder', start=None, asExpression=False) -> _T.Optional[str]: pass
+	def viewFile(self, url_or_path): pass
+	def openAbletonControl(self): pass
+	def openBeat(self): pass
+	def openBookmarks(self): pass
+	def openCOMPEditor(self, path): pass
+	def openConsole(self): pass
+	def openDialogHelp(self, title): pass
+	def openErrors(self): pass
+	def openExplorer(self): pass
+	def openExportMovie(self, path=""): pass
+	def openHelp(self): pass
+	def openImportFile(self): pass
+	def openKeyManager(self): pass
+	def openMIDIDeviceMapper(self): pass
+	def openNewProject(self): pass
+	def openOperatorSnippets(self, family=None, type=None, example=None): pass
+	def openPaletteBrowser(self): pass
+	def openPerformanceMonitor(self): pass
+	def openPreferences(self): pass
+	def openSearch(self): pass
+	def openTextport(self): pass
+	def openVersion(self): pass
+	def openWindowPlacement(self): pass
+
+	status: str
+
+class Undo:
+	globalState: bool
+	redoStack: list
+	state: bool
+	undoStack: list
+
+	def startBlock(self, name, enable=True): pass
+	def clear(self): pass
+	def addCallback(self, callback: _T.Callable[[bool, _T.Any], None], info=None): pass
+	def redo(self): pass
+	def undo(self): pass
+	def endBlock(self): pass
 
 class Project:
 	name: str
