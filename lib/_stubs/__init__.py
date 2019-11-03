@@ -12,13 +12,14 @@ class _Expando:
 		pass
 
 mod = _Expando()
-ui = _Expando()
-ui.panes = []
-ui.panes.current = None
-ui.status = ''
+ui: 'UI'
 PaneType = _Expando()
 PaneType.NETWORKEDITOR = None
 ext = _Expando()  # type: _T.Any
+
+class UI:
+	panes: _T.Any
+	status: str
 
 class Project:
 	name: str
@@ -367,7 +368,39 @@ class td:
 	Monitor = Monitor
 	Monitors = Monitors
 	Attribute = Attribute
-	run = run
+	me: 'OP'
+	absTime: _T.Any #absTime
+	app: 'App'
+	ext: _T.Any
+	families: dict
+	licenses: _T.Any #licenses
+	mod: mod
+	monitors: 'Monitors'
+	op: 'OP'
+	parent: '_Parent'
+	iop: 'OP'
+	ipar: 'OP'
+	project: 'Project'
+	root: 'OP'
+	runs: _T.Any #runs
+	sysinfo: 'SysInfo'
+	ui: 'UI'
+
+	@classmethod
+	def passive(cls, OP) -> 'OP': pass
+	@classmethod
+	def run(
+			cls, script, *args, endFrame=False, fromOP: 'OP' = None, asParameter=False, group=None, delayFrames=0,
+			delayMilliSeconds=0, delayRef: 'OP' = None) -> _T.Any: #Run
+		pass
+	@classmethod
+	def fetchStamp(cls, key, default) -> _T.Union[_ValueT, str]: pass
+	@classmethod
+	def var(cls, varName) -> str: pass
+	@classmethod
+	def varExists(cls, varName) -> bool: pass
+	@classmethod
+	def varOwner(cls, varName) -> _T.Optional['OP']: pass
 
 
 class _Matrix:
