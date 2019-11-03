@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import dataclasses
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 # noinspection PyUnreachableCode
 if False:
@@ -29,19 +29,16 @@ class SourceTrack:
 			return src
 		return None
 
-	@staticmethod
-	def PrepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
-		_prepareOpSources(dat, paths)
+	def PrepareOpSources(self, dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
+		_prepareOpSources(dat, paths, removeComp=self.ownerComp)
 
-	@property
-	def SourceButtonLabels(self):
-		wrapcount = int(self.ownerComp.par.Sourcebuttonwrapchars)
+	def GetSourceButtonLabels(self, wrapcount=None):
 		sources = self.ownerComp.op('sources')  # type: DAT
 		labels = [
 			str(sources[i, 'label'] or sources[i, 'shortName'] or sources[i, 'legalName'] or '-')
 			for i in range(1, sources.numRows)
 		]
-		if wrapcount <= 0:
+		if wrapcount is None or wrapcount <= 0:
 			return labels
 		return [_wrapString(s, wrapcount) for s in labels]
 
@@ -59,7 +56,7 @@ class MixerSources:
 	def PrepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
 		_prepareOpSources(dat, paths)
 
-def _prepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
+def _prepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']], removeComp: Optional['OP'] = None):
 	dat.clear()
 	dat.appendRow(_sourceColumns)
 	if not paths:
@@ -82,6 +79,8 @@ def _prepareOpSources(dat: 'DAT', paths: Iterable[Union[str, 'OP']]):
 			src.compPath = o.path
 		else:
 			continue
+		if removeComp and src.compPath == removeComp.path:
+			src.compPath = ''
 		src.appendToRow(dat)
 
 def _getCompVideoSource(o):
