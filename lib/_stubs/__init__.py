@@ -229,7 +229,7 @@ class Par:
 	style: str
 
 	def copy(self, par: 'Par') -> None: pass
-	def eval(self) -> _ValueT: pass
+	def eval(self) -> _T.Union[_ValueT, '_AnyOpT']: pass
 	def evalNorm(self) -> _ValueT: pass
 	def evalExpression(self) -> _ValueT: pass
 	def evalExport(self) -> _ValueT: pass
@@ -589,7 +589,7 @@ class Cell:
 	row: int
 	col: int
 
-_NameOrIndex = _T.Union[str, int]
+_NameOrIndex = _T.Union[str, int, 'Cell', 'Channel']
 _NamesOrIndices = _T.Iterable[_NameOrIndex]
 
 class DAT(OP):
@@ -602,10 +602,10 @@ class DAT(OP):
 	# noinspection PyMethodOverriding
 	def copy(self, dat: 'DAT'): pass
 
-	def appendRow(self, cells: _T.List[Cell]): pass
-	def appendCol(self, cells: _T.List[Cell]): pass
-	def appendRows(self, cells: _T.List[_T.List[Cell]]): pass
-	def appendCols(self, cells: _T.List[_T.List[Cell]]): pass
+	def appendRow(self, cells: _T.List[_T.Any]): pass
+	def appendCol(self, cells: _T.List[_T.Any]): pass
+	def appendRows(self, cells: _T.List[_T.List[_T.Any]]): pass
+	def appendCols(self, cells: _T.List[_T.List[_T.Any]]): pass
 	def setSize(self, numrows: int, numcols: int): pass
 	def __getitem__(self, row: _NameOrIndex, col: _NameOrIndex) -> Cell: pass
 	def __setitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex], value): pass
