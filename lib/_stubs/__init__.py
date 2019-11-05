@@ -262,7 +262,7 @@ class Page:
 	appendToggle = appendPython = appendFile = appendFolder = _appendBasic
 	appendPulse = appendMomentary = _appendBasic
 
-	def appendPar(self, par: 'Par' = None, label=None, order=None, replace=True) -> _ParTupletT: pass
+	def appendPar(self, name: str, par: 'Par' = None, label=None, order=None, replace=True) -> _ParTupletT: pass
 
 	def sort(self, *parameters: str): pass
 	def destroy(self): pass
@@ -541,8 +541,7 @@ class _ArcBall:
 
 class tdu:
 	@staticmethod
-	def legalName(s):
-		return s
+	def legalName(s: str) -> str: pass
 
 	# noinspection PyShadowingBuiltins
 	@staticmethod
@@ -649,7 +648,11 @@ class CHOP(OP):
 	def convertToKeyframes(self, tolerance=0.1) -> 'animationCOMP': pass
 	def save(self, filepath) -> str: pass
 
-class COMP(OP): pass
+class COMP(OP):
+	def destroyCustomPars(self): pass
+	def sortCustomPages(self, *pages): pass
+	def appendCustomPage(self, name: str) -> 'Page': pass
+
 class SOP(OP): pass
 class TOP(OP): pass
 class MAT(OP): pass
