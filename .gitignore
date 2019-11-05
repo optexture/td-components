@@ -1,2 +1,5 @@
-
-\.idea/
+CrashAutoSave*
+*.dmp
+.idea
+*.pyc
+*-log.txt
