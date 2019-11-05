@@ -177,8 +177,12 @@ def _AddToMapTable(
 		if not enabled:
 			continue
 		control = inDat[inRow, 'control']
-		if not control or not deviceControls.row(control):
-			continue
+		if control and deviceControls.row(control):
+			cc = deviceControls[control, 'cc']
+			chan = deviceControls[control, 'chan']
+		else:
+			cc = ''
+			chan = ''
 		relPath = inDat[inRow, 'path']
 		if not relPath:
 			o = relOp
@@ -186,28 +190,31 @@ def _AddToMapTable(
 			o = relOp.op(relPath) if relOp else op(relOp)
 		if not o:
 			continue
-		par = getattr(o.par, str(inDat[inRow, 'param']), None)
+		par = getattr(o.par, str(inDat[inRow, 'param']), None) if o else None
 		if par is None:
-			continue
-		if not (par.isNumber or par.isToggle or par.isMenu):
-			continue
-		isPulse = par.isPulse or par.isMomentary
-		low = inDat[inRow, 'low'].val
-		high = inDat[inRow, 'high'].val
-		if isPulse:
-			low = 0
-			high = 1
+			isPulse = False
+			low = ''
+			high = ''
 		else:
-			if low == '':
-				if par.isMenu:
-					low = 0
-				else:
-					low = par.normMin
-			if high == '':
-				if par.isMenu:
-					high = len(par.menuNames) - 1
-				else:
-					high = par.normMax
+			if not (par.isNumber or par.isToggle or par.isMenu):
+				continue
+			isPulse = par.isPulse or par.isMomentary
+			low = inDat[inRow, 'low'].val
+			high = inDat[inRow, 'high'].val
+			if isPulse:
+				low = 0
+				high = 1
+			else:
+				if low == '':
+					if par.isMenu:
+						low = 0
+					else:
+						low = par.normMin
+				if high == '':
+					if par.isMenu:
+						high = len(par.menuNames) - 1
+					else:
+						high = par.normMax
 		row = outDat.numRows
 		outDat.appendRow([])
 		outDat[row, 'param'] = o.path + ':' + par.name
@@ -220,5 +227,5 @@ def _AddToMapTable(
 		outDat[row, 'group'] = inDat[inRow, 'group'].val + groups
 		outDat[row, 'parType'] = 'pulse' if isPulse else 'value'
 		outDat[row, 'control'] = control
-		outDat[row, 'cc'] = deviceControls[control, 'cc']
-		outDat[row, 'chan'] = deviceControls[control, 'chan']
+		outDat[row, 'cc'] = cc
+		outDat[row, 'chan'] = chan
