@@ -406,10 +406,27 @@ def _saveTox(context: Context):
 
 def _incrementComponentVersion(context: Context):
 	comp = context.getSelectedOrContext(lambda o: o.isCOMP and hasattr(o.par, 'Compversion'))
-	if comp:
+	print('OMG increment comp version... trying {}'.format(comp))
+	if not comp:
+		comp = context.getSelectedOrContext(lambda o: o.isCOMP)
+		print('OMG increment comp version did not find comp, trying {}'.format(comp))
+	if not comp:
+		ui.status = 'Unable to increment component version, no suitable COMP'
+		return
+	ui.status = 'Updating component version of {!r}'.format(comp)
+	if not hasattr(comp.par, 'Compversion'):
+		page = comp.appendCustomPage(':meta')
+		par = page.appendInt('Compversion', label=':Version')[0]
+		par.val = 0
+		par.default = 0
+		par.readOnly = True
+	else:
 		par = comp.par.Compversion
 		par.val += 1
 		par.default = par.val
+		if par.normMax < par.val:
+			par.normMax = par.val
+		par.readOnly = True
 
 def _makeLastPage(comp, page):
 	if len(comp.customPages) == 1 and comp.customPages[0] == page:
