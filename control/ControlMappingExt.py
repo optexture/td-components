@@ -148,7 +148,7 @@ class ControlMapper:
 		opPars = {}
 		for i in range(1, mapDat.numRows):
 			path = mapDat[i, 'path'].val
-			param = mapDat[i, 'param'].val
+			param = mapDat[i, 'parName'].val
 			if not path or not param:
 				continue
 			if path in opPars:
@@ -226,7 +226,7 @@ def _AddToMapTable(
 		outDat[row, 'low'] = low
 		outDat[row, 'high'] = high
 		outDat[row, 'targetName'] = targetName
-		outDat[row, 'group'] = inDat[inRow, 'group'].val + groups
+		outDat[row, 'group'] = (inDat[inRow, 'group'].val + groups).strip()
 		outDat[row, 'parType'] = 'pulse' if isPulse else 'value'
 		outDat[row, 'control'] = control
 		outDat[row, 'cc'] = cc
