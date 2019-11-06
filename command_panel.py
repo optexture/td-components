@@ -406,10 +406,8 @@ def _saveTox(context: Context):
 
 def _incrementComponentVersion(context: Context):
 	comp = context.getSelectedOrContext(lambda o: o.isCOMP and hasattr(o.par, 'Compversion'))
-	print('OMG increment comp version... trying {}'.format(comp))
 	if not comp:
 		comp = context.getSelectedOrContext(lambda o: o.isCOMP)
-		print('OMG increment comp version did not find comp, trying {}'.format(comp))
 	if not comp:
 		ui.status = 'Unable to increment component version, no suitable COMP'
 		return
@@ -452,15 +450,19 @@ def _addOrUpdateMetadataPar(appendmethod, name, label, value):
 	_addOrUpdatePar(appendmethod, name, label, value, readonly=True, setdefault=True)
 
 def _setComponentMetadata(
-		comp,
+		context: Context,
 		description=None,
 		version=None,
 		typeid=None,
 		website=None,
 		author=None,
 		page=':meta'):
+	comp = context.getSelectedOrContext(lambda o: o.isCOMP)
+	if not comp:
+		ui.status = 'Unable to create metadata, no target comp'
+		return
 	page = comp.appendCustomPage(page)
-	if page.startswith(':'):
+	if page.name.startswith(':'):
 		_makeLastPage(comp, page)
 	if typeid:
 		_addOrUpdateMetadataPar(page.appendStr, 'Comptypeid', ':Type ID', typeid)
@@ -469,6 +471,12 @@ def _setComponentMetadata(
 	_addOrUpdateMetadataPar(page.appendStr, 'Compwebsite', ':Website', website)
 	_addOrUpdateMetadataPar(page.appendStr, 'Compauthor', ':Author', author)
 	page.sort('Comptypeid', 'Compdescription', 'Compversion', 'Compwebsite', 'Compauthor')
+
+def _createTektTdCompsMetadata(context: Context):
+	_setComponentMetadata(
+		context,
+		website='https://github.com/optexture/td-components',
+		author='tekt@optexture.com')
 
 _basicToolCommands = [
 	Command.forAction(
@@ -483,5 +491,10 @@ _basicToolCommands = [
 		_incrementComponentVersion,
 		label='version++',
 		help='increment the component version attribute on selected or active',
+	),
+	Command.forAction(
+		_createTektTdCompsMetadata,
+		label='[t] meta',
+		help='add tekt TD-components metadata to current component',
 	),
 ]
