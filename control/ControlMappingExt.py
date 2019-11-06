@@ -195,9 +195,11 @@ def _AddToMapTable(
 			isPulse = False
 			low = ''
 			high = ''
+			parName = ''
 		else:
 			if not (par.isNumber or par.isToggle or par.isMenu):
 				continue
+			parName = par.name
 			isPulse = par.isPulse or par.isMomentary
 			low = inDat[inRow, 'low'].val
 			high = inDat[inRow, 'high'].val
@@ -217,9 +219,9 @@ def _AddToMapTable(
 						high = par.normMax
 		row = outDat.numRows
 		outDat.appendRow([])
-		outDat[row, 'param'] = o.path + ':' + par.name
+		outDat[row, 'param'] = o.path + ':' + parName
 		outDat[row, 'path'] = o.path
-		outDat[row, 'parName'] = par.name
+		outDat[row, 'parName'] = parName
 		outDat[row, 'enable'] = int(enabled)
 		outDat[row, 'low'] = low
 		outDat[row, 'high'] = high
