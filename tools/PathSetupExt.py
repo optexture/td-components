@@ -27,7 +27,7 @@ class PathSetup:
 			name = cells[0].val
 			if name in paths:
 				continue
-			path = cells[1].val
+			path = os.path.expanduser(os.path.expandvars(cells[1].val))
 			if os.path.exists(path):
 				paths[name] = path
 		outDat.clear()
@@ -43,6 +43,7 @@ class PathSetup:
 		if self.ownerComp.par.Removeotherpaths:
 			for name in missingPathNames:
 				del project.paths[name]
+		self.ownerComp.op('build_current_paths_table').cook()
 
 	@staticmethod
 	def ClearAllPaths():
