@@ -56,7 +56,7 @@ class ControlMapper:
 
 	@staticmethod
 	def PrepareDevices(dat):
-		dat.appendCols([['label'], ['sliders'], ['buttons']])
+		dat.appendCols([['label'], ['sliders'], ['buttons'], ['layout']])
 		for i in range(1, dat.numRows):
 			indev = dat[i, 'indevice']
 			outdev = dat[i, 'outdevice']
@@ -68,6 +68,7 @@ class ControlMapper:
 			if devDef:
 				dat[i, 'sliders'] = devDef.op('sliders') or ''
 				dat[i, 'buttons'] = devDef.op('buttons') or ''
+				dat[i, 'layout'] = devDef.op('layout') or ''
 		# Ensure that the table has placeholders to fill up to 16 entries
 		for i in range(dat.numRows, 17):
 			dat.appendRow([i])
@@ -101,7 +102,7 @@ class ControlMapper:
 				if len(parts) != 3:
 					continue
 				try:
-					cc = int(parts[1])
+					cc = int(parts[1], 16)
 				except ValueError:
 					cc = None
 				if cc is None:
