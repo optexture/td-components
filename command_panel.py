@@ -478,6 +478,10 @@ def _createTektTdCompsMetadata(context: Context):
 		website='https://github.com/optexture/td-components',
 		author='tekt@optexture.com')
 
+def _destroyCustomPars(context: Context):
+	for targetOp in context.getSelectedOps(lambda o: hasattr(o, 'destroyCustomPars')):
+		targetOp.destroyCustomPars()
+
 _basicToolCommands = [
 	Command.forAction(
 		_copyPaths,
@@ -491,6 +495,11 @@ _basicToolCommands = [
 		_incrementComponentVersion,
 		label='version++',
 		help='increment the component version attribute on selected or active',
+	),
+	Command.forAction(
+		_destroyCustomPars,
+		label='kill pars',
+		help='destroy all custom parameters on the selected OP(s)'
 	),
 	Command.forAction(
 		_createTektTdCompsMetadata,
