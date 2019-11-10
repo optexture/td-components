@@ -50,13 +50,47 @@ class ControlTarget:
 				if not dat.col(col):
 					dat.appendCol([col])
 
+def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
+	outDat.clear()
+	outDat.appendRow([
+		'control',
+		'cc',
+		'chan',
+	])
+	sliders = definitionDat.op('sliders') if definitionDat else None  # type: DAT
+	buttons = definitionDat.op('buttons') if definitionDat else None  # type: DAT
+	for ctrlTable in [sliders, buttons]:
+		if not ctrlTable or ctrlTable.numCols < 2:
+			continue
+		for ctrlRow in range(ctrlTable.numRows):
+			name = ctrlTable[ctrlRow, 0]
+			if not name:
+				continue
+			pattern = ctrlTable[ctrlRow, 1].val
+			if not pattern:
+				continue
+			parts = pattern.split(' ')
+			if len(parts) != 3:
+				continue
+			try:
+				cc = int(parts[1], 16)
+			except ValueError:
+				cc = None
+			if cc is None:
+				continue
+			outDat.appendRow([
+				name,
+				cc,
+				'ch1c{}'.format(cc),
+			])
+
 class ControlMapper:
 	def __init__(self, ownerComp: 'COMP'):
 		self.ownerComp = ownerComp
 
 	@staticmethod
 	def PrepareDevices(dat):
-		dat.appendCols([['label'], ['sliders'], ['buttons'], ['layout']])
+		dat.appendCol(['label'])
 		for i in range(1, dat.numRows):
 			indev = dat[i, 'indevice']
 			outdev = dat[i, 'outdevice']
@@ -64,11 +98,6 @@ class ControlMapper:
 				dat[i, 'label'] = indev
 			else:
 				dat[i, 'label'] = '{} / {}'.format(indev, outdev)
-			devDef = op(dat[i, 'definition'] or '')
-			if devDef:
-				dat[i, 'sliders'] = devDef.op('sliders') or ''
-				dat[i, 'buttons'] = devDef.op('buttons') or ''
-				dat[i, 'layout'] = devDef.op('layout') or ''
 		# Ensure that the table has placeholders to fill up to 16 entries
 		for i in range(dat.numRows, 17):
 			dat.appendRow([i])
@@ -79,39 +108,8 @@ class ControlMapper:
 			dat[i, 'channel'] = 1
 
 	@staticmethod
-	def BuildDeviceControls(outDat: 'DAT', deviceDat: 'DAT'):
-		outDat.clear()
-		outDat.appendRow([
-			'control',
-			'cc',
-			'chan',
-		])
-		sliders = op(deviceDat[1, 'sliders'])  # type: DAT
-		buttons = op(deviceDat[1, 'buttons'])  # type: DAT
-		for ctrlTable in [sliders, buttons]:
-			if not ctrlTable or ctrlTable.numCols < 2:
-				continue
-			for ctrlRow in range(ctrlTable.numRows):
-				name = ctrlTable[ctrlRow, 0]
-				if not name:
-					continue
-				pattern = ctrlTable[ctrlRow, 1].val
-				if not pattern:
-					continue
-				parts = pattern.split(' ')
-				if len(parts) != 3:
-					continue
-				try:
-					cc = int(parts[1], 16)
-				except ValueError:
-					cc = None
-				if cc is None:
-					continue
-				outDat.appendRow([
-					name,
-					cc,
-					'ch1c{}'.format(cc),
-				])
+	def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
+		BuildDeviceControls(outDat, definitionDat)
 
 	@staticmethod
 	def BuildMapTable(outDat: 'DAT', targets: List[str], deviceControls: 'DAT'):
@@ -232,3 +230,41 @@ def _AddToMapTable(
 		outDat[row, 'control'] = control
 		outDat[row, 'cc'] = cc
 		outDat[row, 'chan'] = chan
+
+class DeviceDisplay:
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp
+
+	@staticmethod
+	def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
+		BuildDeviceControls(outDat, definitionDat)
+
+	def BuildLayout(self, outDat: 'DAT'):
+		definition = self.ownerComp.par.Definition.eval()
+		outDat.clear()
+		outDat.appendRow([
+			'page', 'row', 'col',
+			'slider', 'button',
+			'sliderChan', 'buttonChan',
+		])
+		if not definition:
+			return
+		layout = definition.op('layout')
+		controls = self.ownerComp.op('device_controls')
+		if layout:
+			for i in range(1, layout.numRows):
+				outDat.appendRow([
+					_cellOrDefault(layout, i, 'page', 0),
+					_cellOrDefault(layout, i, 'row', 0),
+					_cellOrDefault(layout, i, 'col', 0),
+					definition.op('sliders') or '',
+					definition.op('buttons') or '',
+					_cellOrDefault(controls, _cellOrDefault(layout, i, 'slider', None), 'chan', ''),
+					_cellOrDefault(controls, _cellOrDefault(layout, i, 'button', None), 'chan', ''),
+				])
+
+def _cellOrDefault(dat: 'DAT', r, c, default):
+	if None in (dat, r, c):
+		return default
+	cell = dat[r, c]
+	return cell if cell not in (None, '') else default
