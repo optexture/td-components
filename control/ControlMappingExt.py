@@ -50,15 +50,15 @@ class ControlTarget:
 				if not dat.col(col):
 					dat.appendCol([col])
 
-def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
+def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 	outDat.clear()
 	outDat.appendRow([
 		'control',
 		'cc',
 		'chan',
 	])
-	sliders = definitionDat.op('sliders') if definitionDat else None  # type: DAT
-	buttons = definitionDat.op('buttons') if definitionDat else None  # type: DAT
+	sliders = definition.op('sliders') if definition else None  # type: DAT
+	buttons = definition.op('buttons') if definition else None  # type: DAT
 	for ctrlTable in [sliders, buttons]:
 		if not ctrlTable or ctrlTable.numCols < 2:
 			continue
@@ -236,13 +236,14 @@ class DeviceDisplay:
 		self.ownerComp = ownerComp
 
 	@staticmethod
-	def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
-		BuildDeviceControls(outDat, definitionDat)
+	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
+		BuildDeviceControls(outDat, definition)
 
 	def BuildLayout(self, outDat: 'DAT'):
 		definition = self.ownerComp.par.Definition.eval()
 		outDat.clear()
 		outDat.appendRow([
+			'label',
 			'page', 'row', 'col',
 			'slider', 'button',
 			'sliderChan', 'buttonChan',
@@ -253,12 +254,20 @@ class DeviceDisplay:
 		controls = self.ownerComp.op('device_controls')
 		if layout:
 			for i in range(1, layout.numRows):
+				slider = _cellOrDefault(layout, i, 'slider', '')
+				button = _cellOrDefault(layout, i, 'button', '')
+				parts = []
+				if slider:
+					parts.append(slider)
+				if button:
+					parts.append(button)
 				outDat.appendRow([
+					' | '.join(parts) if parts else '',
 					_cellOrDefault(layout, i, 'page', 0),
 					_cellOrDefault(layout, i, 'row', 0),
 					_cellOrDefault(layout, i, 'col', 0),
-					definition.op('sliders') or '',
-					definition.op('buttons') or '',
+					slider,
+					button,
 					_cellOrDefault(controls, _cellOrDefault(layout, i, 'slider', None), 'chan', ''),
 					_cellOrDefault(controls, _cellOrDefault(layout, i, 'button', None), 'chan', ''),
 				])
@@ -267,4 +276,4 @@ def _cellOrDefault(dat: 'DAT', r, c, default):
 	if None in (dat, r, c):
 		return default
 	cell = dat[r, c]
-	return cell if cell not in (None, '') else default
+	return cell.val if cell not in (None, '') else default
