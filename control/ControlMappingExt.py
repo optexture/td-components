@@ -326,6 +326,7 @@ class DeviceDisplay:
 		for i in range(1, layout.numRows):
 			page = layout[i, 'page'].val
 			if page not in pageNames:
+				pageNames.add(page)
 				outDat.appendRow([page, page, '', ''])
 
 def _getParamLabel(param):
