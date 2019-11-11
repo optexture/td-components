@@ -606,7 +606,7 @@ class DAT(OP):
 	def appendRows(self, cells: _T.List[_T.List[_T.Any]]): pass
 	def appendCols(self, cells: _T.List[_T.List[_T.Any]]): pass
 	def setSize(self, numrows: int, numcols: int): pass
-	def __getitem__(self, row: _NameOrIndex, col: _NameOrIndex) -> Cell: pass
+	def __getitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex]) -> Cell: pass
 	def __setitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex], value): pass
 	def cell(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> Cell: pass
 	def cells(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> _T.List[Cell]: pass

@@ -60,7 +60,7 @@ def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 	sliders = definition.op('sliders') if definition else None  # type: DAT
 	buttons = definition.op('buttons') if definition else None  # type: DAT
 	for ctrlTable in [sliders, buttons]:
-		if not ctrlTable or ctrlTable.numCols < 2:
+		if not ctrlTable or not ctrlTable.valid or ctrlTable.numCols < 2:
 			continue
 		for ctrlRow in range(ctrlTable.numRows):
 			name = ctrlTable[ctrlRow, 0]
@@ -108,8 +108,8 @@ class ControlMapper:
 			dat[i, 'channel'] = 1
 
 	@staticmethod
-	def BuildDeviceControls(outDat: 'DAT', definitionDat: 'DAT'):
-		BuildDeviceControls(outDat, definitionDat)
+	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
+		BuildDeviceControls(outDat, definition)
 
 	@staticmethod
 	def BuildMapTable(outDat: 'DAT', targets: List[str], deviceControls: 'DAT'):
@@ -239,7 +239,8 @@ class DeviceDisplay:
 	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 		BuildDeviceControls(outDat, definition)
 
-	def BuildLayout(self, outDat: 'DAT', layout: 'DAT', mappings: 'DAT'):
+	@staticmethod
+	def BuildLayout(outDat: 'DAT', layout: 'DAT', mappings: 'DAT', controls: 'DAT'):
 		outDat.clear()
 		outDat.appendRow([
 			'label',
@@ -248,7 +249,6 @@ class DeviceDisplay:
 			'sliderChan', 'buttonChan',
 			'mappingLabel', 'mappingHelp',
 		])
-		controls = self.ownerComp.op('device_controls')
 		if not layout:
 			return
 		for i in range(1, layout.numRows):
@@ -301,6 +301,32 @@ class DeviceDisplay:
 				param or '',
 				'\\n'.join(param.val.split(':')) if param else '',
 			])
+
+	@staticmethod
+	def BuildPages(outDat: 'DAT', definition: 'COMP', layout: 'DAT'):
+		outDat.clear()
+		outDat.appendRow(['page', 'label', 'triggerChan', 'triggerCc', 'triggerChanName'])
+		pages = definition.op('pages') if definition else None
+		pageNames = set()
+		if pages:
+			for i in range(1, pages.numRows):
+				name = pages[i, 'page']
+				if not name:
+					continue
+				pageNames.add(name.val)
+				chan = _cellOrDefault(pages, i, 'triggerChan', '')
+				cc = _cellOrDefault(pages, i, 'triggerCc', '')
+				outDat.appendRow([
+					name,
+					_cellOrDefault(pages, i, 'label', name),
+					chan,
+					cc,
+					'ch{}c{}'.format(chan, cc),
+				])
+		for i in range(1, layout.numRows):
+			page = layout[i, 'page'].val
+			if page not in pageNames:
+				outDat.appendRow([page, page, '', ''])
 
 def _getParamLabel(param):
 	if not param:
