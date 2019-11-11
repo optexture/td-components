@@ -239,38 +239,81 @@ class DeviceDisplay:
 	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 		BuildDeviceControls(outDat, definition)
 
-	def BuildLayout(self, outDat: 'DAT'):
-		definition = self.ownerComp.par.Definition.eval()
+	def BuildLayout(self, outDat: 'DAT', layout: 'DAT', mappings: 'DAT'):
 		outDat.clear()
 		outDat.appendRow([
 			'label',
 			'page', 'row', 'col',
 			'slider', 'button',
 			'sliderChan', 'buttonChan',
+			'mappingLabel', 'mappingHelp',
 		])
-		if not definition:
-			return
-		layout = definition.op('layout')
 		controls = self.ownerComp.op('device_controls')
-		if layout:
-			for i in range(1, layout.numRows):
-				slider = _cellOrDefault(layout, i, 'slider', '')
-				button = _cellOrDefault(layout, i, 'button', '')
-				parts = []
-				if slider:
-					parts.append(slider)
-				if button:
-					parts.append(button)
-				outDat.appendRow([
-					' | '.join(parts) if parts else '',
-					_cellOrDefault(layout, i, 'page', 0),
-					_cellOrDefault(layout, i, 'row', 0),
-					_cellOrDefault(layout, i, 'col', 0),
-					slider,
-					button,
-					_cellOrDefault(controls, _cellOrDefault(layout, i, 'slider', None), 'chan', ''),
-					_cellOrDefault(controls, _cellOrDefault(layout, i, 'button', None), 'chan', ''),
-				])
+		if not layout:
+			return
+		for i in range(1, layout.numRows):
+			slider = _cellOrDefault(layout, i, 'slider', '')
+			button = _cellOrDefault(layout, i, 'button', '')
+			controlLabelParts = []
+			mapLabelParts = []
+			mapHelpParts = []
+			if slider:
+				controlLabelParts.append(slider)
+				sliderParam = mappings[slider, 'param'] if mappings else None
+				if sliderParam:
+					mapLabelParts.append('s: ' + sliderParam.val.rsplit(':', 1)[-1])
+					mapHelpParts.append('s: ' + sliderParam.val)
+			if button:
+				controlLabelParts.append(button)
+				buttonParam = mappings[button, 'param'] if mappings else None
+				if buttonParam:
+					mapLabelParts.append('b: ' + buttonParam.val.rsplit(':', 1)[-1])
+					mapHelpParts.append('b: ' + buttonParam.val)
+
+			outDat.appendRow([
+				' | '.join(controlLabelParts),
+				_cellOrDefault(layout, i, 'page', 0),
+				_cellOrDefault(layout, i, 'row', 0),
+				_cellOrDefault(layout, i, 'col', 0),
+				slider,
+				button,
+				_cellOrDefault(controls, _cellOrDefault(layout, i, 'slider', None), 'chan', ''),
+				_cellOrDefault(controls, _cellOrDefault(layout, i, 'button', None), 'chan', ''),
+				'\\n'.join(mapLabelParts),
+				'\\n'.join(mapHelpParts),
+			])
+
+	@staticmethod
+	def BuildControlMappings(outDat: 'DAT', controls: 'DAT', mappings: 'DAT'):
+		outDat.clear()
+		outDat.appendRow(['control', 'param', 'paramLabel'])
+		for control in controls.col('control')[1:]:
+			if not mappings or not control or not mappings.row(control):
+				param = None
+			else:
+				param = mappings[control, 'param']
+			outDat.appendRow([
+				control,
+				param or '',
+				'\\n'.join(param.val.split(':')) if param else '',
+			])
+
+	# def InitializeControl(self, control: 'COMP', layout: 'DAT'):
+	# 	i = control.digits
+	# 	if i is None or i >= layout.numRows:
+	# 		return
+	# 	sliderChan = layout[i, 'sliderChan']
+	# 	buttonChan = layout[i, 'buttonChan']
+	# 	if not sliderChan:
+	# 		control.par.Knobvalue = 0
+	# 	else:
+	# 		control.par.Knobvalue.expr = 'op("input_values")[{!r}]'.format(sliderChan.val)
+	# 	if not buttonChan:
+	# 		control.par.Buttonvalue = 0
+	# 	else:
+	# 		control.par.Buttonvalue.expr = 'op("input_values")[{!r}]'.format(buttonChan.val)
+	# 	control.par.Knoblabel = layout[i, 'label']
+	# 	control.par.Widgetlabel = layout[i, '']
 
 def _cellOrDefault(dat: 'DAT', r, c, default):
 	if None in (dat, r, c):
