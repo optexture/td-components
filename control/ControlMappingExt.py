@@ -255,20 +255,24 @@ class DeviceDisplay:
 			slider = _cellOrDefault(layout, i, 'slider', '')
 			button = _cellOrDefault(layout, i, 'button', '')
 			controlLabelParts = []
-			mapLabelParts = []
-			mapHelpParts = []
+			mapLabel = ''
+			mapHelp = ''
 			if slider:
 				controlLabelParts.append(slider)
 				sliderParam = mappings[slider, 'param'] if mappings else None
 				if sliderParam:
-					mapLabelParts.append('s: ' + sliderParam.val.rsplit(':', 1)[-1])
-					mapHelpParts.append('s: ' + sliderParam.val)
+					mapLabel = _getParamLabel(sliderParam)
+					mapHelp = sliderParam.val
 			if button:
 				controlLabelParts.append(button)
 				buttonParam = mappings[button, 'param'] if mappings else None
 				if buttonParam:
-					mapLabelParts.append('b: ' + buttonParam.val.rsplit(':', 1)[-1])
-					mapHelpParts.append('b: ' + buttonParam.val)
+					if mapLabel:
+						mapLabel = 's: {}'.format(mapLabel)
+					mapLabel += '\\nb: ' + _getParamLabel(buttonParam)
+					if mapHelp:
+						mapHelp = 's: {}: '.format(mapHelp)
+					mapHelp += '\\nb: ' + buttonParam.val
 
 			outDat.appendRow([
 				' | '.join(controlLabelParts),
@@ -279,8 +283,8 @@ class DeviceDisplay:
 				button,
 				_cellOrDefault(controls, _cellOrDefault(layout, i, 'slider', None), 'chan', ''),
 				_cellOrDefault(controls, _cellOrDefault(layout, i, 'button', None), 'chan', ''),
-				'\\n'.join(mapLabelParts),
-				'\\n'.join(mapHelpParts),
+				mapLabel,
+				mapHelp,
 			])
 
 	@staticmethod
@@ -298,22 +302,18 @@ class DeviceDisplay:
 				'\\n'.join(param.val.split(':')) if param else '',
 			])
 
-	# def InitializeControl(self, control: 'COMP', layout: 'DAT'):
-	# 	i = control.digits
-	# 	if i is None or i >= layout.numRows:
-	# 		return
-	# 	sliderChan = layout[i, 'sliderChan']
-	# 	buttonChan = layout[i, 'buttonChan']
-	# 	if not sliderChan:
-	# 		control.par.Knobvalue = 0
-	# 	else:
-	# 		control.par.Knobvalue.expr = 'op("input_values")[{!r}]'.format(sliderChan.val)
-	# 	if not buttonChan:
-	# 		control.par.Buttonvalue = 0
-	# 	else:
-	# 		control.par.Buttonvalue.expr = 'op("input_values")[{!r}]'.format(buttonChan.val)
-	# 	control.par.Knoblabel = layout[i, 'label']
-	# 	control.par.Widgetlabel = layout[i, '']
+def _getParamLabel(param):
+	if not param:
+		return ''
+	param = str(param)
+	if ':' not in param:
+		return param
+	path, parName = param.rsplit(':', 1)
+	o = op(path)
+	par = getattr(o.par, parName, None) if o else None
+	if par is None:
+		return parName
+	return par.label
 
 def _cellOrDefault(dat: 'DAT', r, c, default):
 	if None in (dat, r, c):
