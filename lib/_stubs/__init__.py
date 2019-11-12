@@ -2,6 +2,7 @@
 
 # noinspection PyShadowingBuiltins
 import typing as _T
+import enum as _E
 
 # noinspection PyUnreachableCode
 if False:
@@ -15,6 +16,17 @@ mod = _Expando()
 ui: 'UI'
 PaneType = _Expando()
 PaneType.NETWORKEDITOR = None
+
+class PaneType(_E.Enum):
+	NETWORKEDITOR = 0
+	PANEL = 0
+	GEOMETRYVIEWER = 0
+	TOPVIEWER = 0
+	CHOPVIEWER = 0
+	ANIMATIONEDITOR = 0
+	PARAMETERS = 0
+	TEXTPORT = 0
+
 ext = _Expando()  # type: _T.Any
 
 class UI:
@@ -23,7 +35,7 @@ class UI:
 	dpiBiCubicFilter: bool
 	masterVolume: float
 	options: _T.Any #td.Options
-	panes: _T.Any #td.Panes
+	panes: 'Panes'
 	performMode: bool
 	preferences: _T.Any #td.Preferences
 	redrawMainWindow: bool
@@ -67,6 +79,44 @@ class UI:
 	def openWindowPlacement(self): pass
 
 	status: str
+
+class Panes:
+	def __getitem__(self, key) -> 'Pane': pass
+	def __iter__(self) -> _T.Iterator['Pane']: pass
+	def __len__(self) -> int: pass
+	def __next__(self) -> 'Pane': pass
+	# noinspection PyShadowingBuiltins
+	def createFloating(
+			self,
+			type=PaneType.NETWORKEDITOR,
+			name=None,
+			maxWidth=1920, maxHeight=1080,
+			monitorSpanWidth=0.9, monitorSpanHeight=0.9,
+	) -> 'Pane': pass
+
+	current: 'Pane'
+
+Coords = _T.NamedTuple('Coords', [('x', int), ('y', int), ('u', float), ('v', float)])
+
+class Pane:
+	def changeType(self, paneType: 'PaneType') -> 'Pane': pass
+	def close(self): pass
+	def floatingCopy(self) -> 'Pane': pass
+	def splitBottom(self) -> 'Pane': pass
+	def splitLeft(self) -> 'Pane': pass
+	def splitRight(self) -> 'Pane': pass
+	def splitTop(self) -> 'Pane': pass
+	def tearAway(self) -> bool: pass
+
+	bottomLeft: 'Coords'
+	id: int
+	link: int
+	maximize: bool
+	name: str
+	owner: 'COMP'
+	ratio: float
+	topRight: 'Coords'
+	type: 'PaneType'
 
 class Undo:
 	globalState: bool
