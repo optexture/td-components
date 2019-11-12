@@ -32,6 +32,7 @@ global_slider	*	Sliderindicatorcolora	1.0
 button	*_button	Buttonfont	'Roboto'
 buttonicon	*_buttonicon	Buttonfont	'Material Design Icons'
 dropfield	*_dropfield	Buttonfont	'Material Design Icons'
+filefield	*_filefield	Buttonfont	'Material Design Icons'
 radio	*_radio	Radiofont	'Roboto'
 radio	*_radio	Radiobasecolorr	0.0
 radio	*_radio	Radiobasecolorg	0.0
