@@ -589,9 +589,31 @@ class _ArcBall:
 	def setTransform(self, matrix: _Matrix) -> None: pass
 	def identity(self) -> None: pass
 
+class _PathInfo(str):
+	path: str
+	ext: str  # includes "."
+	fileType: str
+	absPath: str
+	exists: bool
+	isDir: bool
+	isFile: bool
+
+	# noinspection PyMissingConstructor,PyUnusedLocal
+	def __init__(self, path: str = None): pass
+
+
+class _Dependency:
+	def __init__(self, _=None):
+		self.val = None
+
+	def modified(self): pass
+
 class tdu:
 	@staticmethod
 	def legalName(s: str) -> str: pass
+
+	@staticmethod
+	def legalMenuName(s: str) -> str: pass
 
 	# noinspection PyShadowingBuiltins
 	@staticmethod
@@ -600,15 +622,11 @@ class tdu:
 	@staticmethod
 	def remap(inputVal, fromMin, fromMax, toMin, toMax): pass
 
-	class Dependency:
-		def __init__(self, _=None):
-			self.val = None
-
-		def modified(self): pass
-
+	Dependency = _Dependency
 	Position = _Position
 	Vector = _Vector
 	Matrix = _Matrix
+	PathInfo = _PathInfo
 
 	# noinspection PyShadowingBuiltins
 	@staticmethod
@@ -618,7 +636,10 @@ class tdu:
 	def match(pattern, inputList, caseSensitive=True) -> _T.List[str]: pass
 
 	@staticmethod
-	def collapsePath(path): return path
+	def collapsePath(path: str) -> str: pass
+
+	@staticmethod
+	def expandPath(path: str) -> str: pass
 
 	ArcBall = _ArcBall
 
@@ -734,6 +755,7 @@ class App:
 	version: str
 	osName: str
 	osVersion: str
+	userPaletteFolder: str
 
 app: App
 
