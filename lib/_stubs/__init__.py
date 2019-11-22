@@ -424,6 +424,8 @@ class OP:
 	def findChildren(self, maxDepth=1, tags=None) -> '_T.List[_AnyOpT]': pass
 	def copy(self, o: '_AnyOpT', name=None) -> 'op': pass
 	def create(self, OPtype, name, initialize=True) -> '_AnyOpT': pass
+	def loadTox(self, filepath: str, unwired=False, pattern=None) -> 'OP': pass
+	def save(self, filepath: str) -> 'str': pass
 	def shortcutPath(self, o: '_AnyOpT', toParName=None) -> str: pass
 	def relativePath(self, o: '_AnyOpT') -> str: pass
 	def openMenu(self, x=None, y=None): pass
