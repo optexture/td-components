@@ -77,6 +77,9 @@ class ParamHelper:
 			self._UpdateStatus('Attempting to create par {!r}'.format(newName))
 			newPar = page.appendPar(newName, par=par, label=label)[0]
 			self._UpdateStatus('Created parameter {!r}'.format(newPar))
+			if newPar.defaultExpr in (None, 'None'):
+				newPar.defaultExpr = ''
+				newPar.default = par.default
 		attachType = self.ownerComp.par.Attachmenttype.eval()
 		if attachType == 'none':
 			return
