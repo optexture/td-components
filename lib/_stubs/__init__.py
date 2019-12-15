@@ -578,6 +578,37 @@ class _Vector:
 	def project(self, vec1: '_Vector', vec2: '_Vector'): pass
 	def reflect(self, vec: '_Vector'): pass
 
+_OperableWithColor = _T.Union['_Color', _T.Tuple[float, float, float, float], _T.List[float], float]
+
+class _Color:
+	r: float
+	g: float
+	b: float
+	a: float
+
+	def __init__(self, *vals): pass
+
+	def __abs__(self) -> '_Color': pass
+	def __add__(self, other: _OperableWithColor) -> '_Color': pass
+	def __sub__(self, other: _OperableWithColor) -> '_Color': pass
+	def __mul__(self, other: _OperableWithColor) -> '_Color': pass
+	def __floordiv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __truediv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __iadd__(self, other: _OperableWithColor) -> '_Color': pass
+	def __isub__(self, other: _OperableWithColor) -> '_Color': pass
+	def __imul__(self, other: _OperableWithColor) -> '_Color': pass
+	def __ifloordiv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __itruediv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __radd__(self, other: _OperableWithColor) -> '_Color': pass
+	def __rsub__(self, other: _OperableWithColor) -> '_Color': pass
+	def __rmul__(self, other: _OperableWithColor) -> '_Color': pass
+	def __rfloordiv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __rtruediv__(self, other: _OperableWithColor) -> '_Color': pass
+	def __len__(self): return 4
+	def __getitem__(self, item) -> float: pass
+	def __setitem__(self, key, value): pass
+	def __iter__(self): pass
+
 class _ArcBall:
 	def beginPan(self, u, v) -> None: pass
 	def beginRotate(self, u, v) -> None: pass
@@ -627,6 +658,7 @@ class tdu:
 	Dependency = _Dependency
 	Position = _Position
 	Vector = _Vector
+	Color = _Color
 	Matrix = _Matrix
 	PathInfo = _PathInfo
 
