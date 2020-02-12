@@ -20,6 +20,8 @@ import inspect
 import collections
 import TDStoreTools
 import warnings
+import datetime
+
 
 def clamp(value, inMin, inMax):
 	"""returns the value clamped between inMin and inMax"""
@@ -62,7 +64,6 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 	toOp. This expression is suitable for use in any OP parameter on fromOp.
 		OP portion of shortcut will be the first of:
 			me
-			iop.<iopshortcut> or ipar.<iopshortcut>.<parName>
 			op('/')
 			op('./<path>')  -  Direct child
 			op('<toOp.name>')  -  Direct sibling
@@ -79,13 +80,12 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 				toOp. If possible, the 'ipar' shortcut will be used.
 
 	"""
-
-	def rootChild(rootOp, root=''):
+	def rootChild(rootOp, rootExpr=''):
 		if rootOp == op('/'):
 			fromRoot = toOp.path
 		else:
 			fromRoot = toOp.path[len(rootOp.path) + 1:]
-		return root + "op('" + fromRoot + "')"
+		return rootExpr + "op('" + fromRoot + "')"
 
 	def parCheck(shortcutPath):
 		if toParName:
@@ -97,60 +97,58 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 		raise ValueError("getShortcutPath: invalid fromOp")
 	if toOp is None:
 		raise ValueError("getShortcutPath: invalid toOp")
+
 	# me
 	if fromOp == toOp:
 		return parCheck('me')
-	# parent.<parentshortcut>.op('<path>')
-	# search for iop/ipars
-	sanity = 100
-	searchOp = fromOp
-	while searchOp != op('/'):
-		sanity -= 1  # reduce sanity
-		if sanity == 0:
-			raise Exception("parentLevel search exceeded max depth",
-							fromOp, toOp)
-		searchOp = searchOp.parent()
-		for iopPar in searchOp.pars('iop*'):
-			if iopPar.eval() == toOp:
-				shortcutParName = 'iopshortcut' + iopPar.name[3:]
-				shortcut = getattr(searchOp.par, shortcutParName).eval()
-				if toParName:
-					return'ipar.' + shortcut + '.' + toParName
-				else:
-					return 'iop.' + shortcut
+
 	# op('/')
 	if toOp == op('/'):
 		return parCheck("op('/')")
+
 	# op('./<path>')  -  Direct child
 	if parentLevel(fromOp, toOp) and fromOp != op('/'):
 		return parCheck("op('." + toOp.path[len(fromOp.path):] + "')")
+
 	# op('<toOp.name>')  -  Direct sibling
 	if fromOp.parent() == toOp.parent():
 		return parCheck("op('" + toOp.name + "')")
+
 	# parent.<parentshortcut>
 	if parentLevel(toOp, fromOp) and getattr(toOp.par, 'parentshortcut') \
 			and toOp.par.parentshortcut.eval().strip():
 		return parCheck('parent.' + toOp.par.parentshortcut)
-	# parent.<parentshortcut>.op('<path>')
-	# search for common shortcut parents
-	sanity = 100
-	searchOp = toOp
-	while searchOp != op('/'):
-		sanity -= 1  # reduce sanity
-		if sanity == 0:
-			raise Exception("parentLevel search exceeded max depth",
-							fromOp, toOp)
-		searchOp = searchOp.parent()
-		parentShortcut = searchOp.par.parentshortcut.eval().strip()
-		if parentShortcut:
-			if getattr(fromOp.parent, parentShortcut, None) == searchOp:
-				root = 'parent.' + parentShortcut + '.'
-				return parCheck(rootChild(searchOp, root))
+
 	# op.<opshortcut>
 	if getattr(toOp.par, 'opshortcut', None) \
 			and toOp.par.opshortcut.eval().strip():
 		return parCheck('op.' + toOp.par.opshortcut.eval())
-	# parent.<parentshortcut>.op('<path>')
+
+	# parent(#)
+	if True: # toOp.parent() != op('/'):
+		if parentLevel(toOp, fromOp) and toOp != root:
+			level = parentLevel(toOp, fromOp)
+			return parCheck('parent(' + (str(level) if level > 1 else '') + ')')
+		# parent(#).op('<path>')
+		# search for common parents
+		sanity = 100
+		searchOp = toOp
+		while searchOp != op('/'):
+			sanity -= 1  # reduce sanity
+			if sanity == 0:
+				raise Exception("parentLevel search exceeded max depth",
+								fromOp, toOp)
+			searchOp = searchOp.parent()
+			level = parentLevel(searchOp, fromOp)
+			if level:
+				if level > 1 and searchOp != root:
+					rootExpr = 'parent(' + \
+							   		(str(level) if level > 1 else '') + ').'
+				else:
+					rootExpr = ''
+				return parCheck(rootChild(searchOp, rootExpr))
+
+	# op.<globalshortcut>.op('<path>')
 	# search for common shortcut parents
 	sanity = 100
 	searchOp = toOp
@@ -162,27 +160,12 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 		searchOp = searchOp.parent()
 		opShortcut = searchOp.par.opshortcut.eval().strip()
 		if opShortcut:
-			root = 'op.' + opShortcut + '.'
-			return parCheck(rootChild(searchOp, root))
-	# parent(#)
-	if parentLevel(toOp, fromOp):
-		level = parentLevel(toOp, fromOp)
-		return parCheck('parent(' + (str(level) if level > 1 else '') + ')')
-	# parent(#).op('<path>')
-	# search for common parents
-	sanity = 100
-	searchOp = toOp
-	while searchOp != op('/'):
-		sanity -= 1  # reduce sanity
-		if sanity == 0:
-			raise Exception("parentLevel search exceeded max depth",
-							fromOp, toOp)
-		searchOp = searchOp.parent()
-		level = parentLevel(searchOp, fromOp)
-		if level:
-			root = 'parent(' + (str(level) if level > 1 else '') + ').'
-			return parCheck(rootChild(searchOp, root))
+			rootExpr = 'op.' + opShortcut + '.'
+			return parCheck(rootChild(searchOp, rootExpr))
+
 	# op('<toOp.path>')
+	# debug('!', toOp.path)
+	# debug(parCheck("op('" + toOp.path + "')"))
 	return parCheck("op('" + toOp.path + "')")
 
 menuObject = collections.namedtuple('menuObject', ['menuNames', 'menuLabels'])
@@ -398,7 +381,7 @@ def showInPane(operator, pane='Floating', inside=False):
 		targetPane = pane  # for name set
 	if homeViewOp:
 		run("ui.panes['" + targetPane.name + "'].homeSelected(zoom=True)",
-				delayFrames=1) 
+				delayFrames=1)
 	else:
 		run("ui.panes['" + targetPane.name + "'].home(zoom=True)",
 				delayFrames=1)
@@ -512,7 +495,7 @@ def getParInfo(sourceOp, pattern='*', names=None,
 		if (names is None or p.name in names) and \
 				((p.isCustom and includeCustom) or \
 										(not p.isCustom and includeNonCustom)):
-			parInfo[p.name] = [p.val, p.expr if p.expr else '', str(p.mode),
+			parInfo[p.name] = [p.val, p.expr if p.expr else '', p.mode.name,
 							   p.bindExpr, p.default]
 	return parInfo
 
@@ -586,6 +569,8 @@ def applyParInfo(targetOp, parInfo, setDefaults=False):
 					pass
 				p.mode = mode
 			elif mode == ParMode.BIND:
+				if p.bindMaster is not None:
+					bindVal = p.bindMaster.eval()
 				try:
 					p.val = val
 				except:
@@ -599,6 +584,10 @@ def applyParInfo(targetOp, parInfo, setDefaults=False):
 				except:
 					pass
 				p.mode = mode
+				try:
+					p.val = bindVal
+				except:
+					pass
 			else:
 				try:
 					p.val = val
@@ -657,7 +646,7 @@ def validChannelName(name):
 	op('constant1').par.name0 = ''
 	return validName
 
-def errorDialog(text, title):
+def messageDialog(text, title):
 	"""
 	Open a popup dialog (after one frame delay), with just an OK button
 
@@ -676,6 +665,8 @@ def errorDialog(text, title):
 		enterButton=1)
 		""", delayFrames=1, delayRef=op.TDResources
 		)
+
+errorDialog = messageDialog # for backwards compatibility
 
 def extensionOPFromPar(comp, userIndex):
 	"""
@@ -737,23 +728,71 @@ def editExtensionOP(extOP):
 		op.TDDialogs.op('CompEditor').Connect(extOP)
 		op.TDDialogs.op('CompEditor').openViewer()
 
-def bindChain(par):
+def bindChain(par, parsOnly=False):
 	"""
 	Return a list of parameters, starting with par, followed by its bind master,
 	if available, followed by it's master's master if available etc.
 	:param par: the parameter to start the chain search
+	:param parsOnly: if True, only return parameters in the chain
 	:return: list of [par, par's bind master, ...]
 	"""
 	chain = [par]
 	try:
-		master = par.owner.evalExpression(par.bindExpr)
+		master = par.mode == ParMode.BIND and par.bindMaster
 	except:
 		master = None
 	while master:
 		chain.append(master)
 		try:
-			master = master.owner.evalExpression(master.bindExpr)
+			master = master.mode == ParMode.BIND and master.bindMaster
 		except:
 			master = None
+	if parsOnly and not isinstance(chain[-1], Par):
+		chain.pop(-1)
 	return chain
 
+def unbindReferences(par, modeOnly=False):
+	"""
+	Erase bind strings or change modes for all bindReferences of a parameter
+
+	:param par: the bindMaster parameter
+	:param modeOnly: if True, just change the references modes to prevMode
+	:return: the references that were changed
+	"""
+	refs = par.bindReferences
+	for p in refs:
+		p.mode = p.prevMode
+		if not modeOnly:
+			p.bindExpr = ''
+	return refs
+
+def timestampFromISO(iso, zeroOnError=True):
+	"""
+	Get a float representation from an ISO formatted time string. See
+	https://docs.python.org/3/library/datetime.html#datetime-objects
+
+	:param iso: time string
+	:param zeroOnError: return zero if there is an exception, otherwise raise it
+	:return: timestamp float of the iso
+	"""
+	try:
+		return datetime.datetime.fromisoformat(iso).timestamp()
+	except:
+		if zeroOnError:
+			return 0
+		else:
+			raise
+
+def getCustomPage(comp, name):
+	"""
+	Get a custom page by name
+	Args:
+		comp: comp with custom page
+		name: page name
+
+	Returns:
+		Page object or None if name not found
+	"""
+	for p in comp.customPages:
+		if p.name == name:
+			return p

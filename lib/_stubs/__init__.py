@@ -1,5 +1,6 @@
 # trick pycharm
 
+from abc import ABC as _ABC
 # noinspection PyShadowingBuiltins
 import typing as _T
 import enum as _E
@@ -210,7 +211,7 @@ class Channel:
 	vals: _T.List[float]
 
 	def __getitem__(self, index: int) -> float: pass
-	def eval(self, index) -> float: pass
+	def eval(self, index: _T.Optional[int] = None) -> float: pass
 	def evalFrame(self, frame) -> float: pass
 	def evalSeconds(self, secs) -> float: pass
 	def numpyArray(self) -> numpy.array: pass
@@ -238,7 +239,6 @@ class Par:
 	label: str
 
 	startSection: bool
-	displayOnly: bool
 	readOnly: bool
 	tuplet: '_ParTupletT'
 	tupletName: str
@@ -467,13 +467,6 @@ def ops(*paths) -> _T.List['_AnyOpT']: pass
 
 def var(name) -> str: pass
 
-class Attribute:
-	owner: OP
-	name: str
-	size: int
-	type: type
-	default: _T.Union[float, int, str, tuple, '_Position', '_Vector']
-
 def run(codeorwhatever, *args, delayFrames=0, delayMilliSeconds=0, delayRef=None): pass
 
 class td:
@@ -677,21 +670,31 @@ class tdu:
 
 	ArcBall = _ArcBall
 
-# noinspection DuplicatedCode
-JustifyType = _Expando()
-JustifyType.TOPLEFT, JustifyType.TOPCENTER, JustifyType.TOPRIGHT, JustifyType.CENTERLEFT = 0, 0, 0, 0
-JustifyType.CENTER = 0
-JustifyType.CENTERRIGHT, JustifyType.BOTTOMLEFT, JustifyType.BOTTOMCENTER, JustifyType.BOTTOMRIGHT = 0, 0, 0, 0
+class JustifyType(_E.Enum):
+	TOPLEFT = 0
+	TOPCENTER = 0
+	TOPRIGHT = 0
+	CENTERLEFT = 0
+	CENTER = 0
+	CENTERRIGHT = 0
+	BOTTOMLEFT = 0
+	BOTTOMCENTER = 0
+	BOTTOMRIGHT = 0
 
-ParMode = _Expando()
-ParMode.CONSTANT = ParMode.EXPRESSION = ParMode.EXPORT = 0
+class ParMode(_E.Enum):
+	CONSTANT = 0
+	EXPRESSION = 1
+	EXPORT = 2
+	BIND = 3
 
 ExpandoStub = _Expando
 
-class Cell:
+class Cell(_T.SupportsInt, _T.SupportsAbs, _T.SupportsFloat, _T.SupportsBytes):
 	val: str
 	row: int
 	col: int
+
+	def offset(self, r: int, c: int) -> _T.Optional['Cell']: pass
 
 _NameOrIndex = _T.Union[str, int, 'Cell', 'Channel']
 _NamesOrIndices = _T.Iterable[_NameOrIndex]
@@ -754,20 +757,177 @@ class CHOP(OP):
 	def save(self, filepath) -> str: pass
 
 class COMP(OP):
+	inputCOMPConnectors: list
+	outputCOMPConnectors: list
+
 	def destroyCustomPars(self): pass
 	def sortCustomPages(self, *pages): pass
 	def appendCustomPage(self, name: str) -> 'Page': pass
 
-class SOP(OP): pass
+class windowCOMP(COMP):
+	scalingMonitorIndex: int
+	isBorders: bool
+	isFill: bool
+	isOpen: bool
+	width: int
+	height: int
+	x: int
+	y: int
+	contentX: int
+	contentY: int
+	contentWidth: int
+	contentHeight: int
+
+	def setForeground(self) -> bool: pass
+
+class timeCOMP(COMP):
+	frame: float
+	seconds: float
+	rate: float
+	play: bool
+	timecode: str
+	start: float
+	end: float
+	rangeStart: float
+	rangeEnd: float
+	loop: bool
+	independent: bool
+	tempo: float
+	signature1: int
+	signature2: int
+
+_AttributeDataElementT = _T.Union[float, int, str]
+_AttributeDataTupleT = _T.Union[
+	_T.Tuple[_AttributeDataElementT],
+	_T.Tuple[_AttributeDataElementT, _AttributeDataElementT],
+	_T.Tuple[_AttributeDataElementT, _AttributeDataElementT, _AttributeDataElementT],
+	_T.Tuple[_AttributeDataElementT, _AttributeDataElementT, _AttributeDataElementT, _AttributeDataElementT],
+]
+_AttributeDataT = _T.Union[
+	_AttributeDataElementT,
+	_AttributeDataTupleT,
+	_Vector,
+	_Position
+]
+
+class Attribute:
+	owner: 'SOP'
+	name: str
+	size: int
+	type: type
+	default: _AttributeDataT
+
+	def destroy(self): pass
+
+class Attributes(_T.Collection[Attribute], _ABC):
+	owner: 'SOP'
+
+	def create(self, name: str, default: _AttributeDataT = None) -> Attribute: pass
+
+class AttributeData(_AttributeDataTupleT):
+	owner: 'SOP'
+	val: _AttributeDataT
+
+class Point(_T.Any):
+	index: int
+	owner: 'SOP'
+	P: 'AttributeData'
+	x: float
+	y: float
+	z: float
+
+	def destroy(self): pass
+
+class Points(_T.Sequence[Point], _ABC):
+	owner: 'SOP'
+
+class Vertex(_T.Any):
+	index: int
+	owner: 'SOP'
+	point: Point
+	prim: 'Prim'
+
+class Prim(_T.Sized, _T.Sequence[Vertex], _T.Any, _ABC):
+	center: _Position
+	index: int
+	normal: _Vector
+	owner: 'SOP'
+	weight: float
+	direction: _Vector
+	min: _Position
+	max: _Position
+	size: _Position
+
+	def destroy(self, destroyPoints=True): pass
+	def eval(self, u: float, v: float) -> _Position: pass
+
+	def __getitem__(self, item: _T.Union[int, _T.Tuple[int, int]]) -> Vertex: pass
+
+class Poly(Prim, _ABC):
+	pass
+
+class Bezier(Prim, _ABC):
+	anchors: _T.List[Vertex]
+	basis: _T.List[float]
+	closed: bool
+	order: float
+	segments: _T.List[_T.List[Vertex]]
+	tangents: _T.List[_T.Tuple[Vertex, Vertex]]
+
+	def insertAnchor(self, u: float) -> Vertex: pass
+	def updateAnchor(self, anchorIndex: int, targetPosition: _Position, tangents=True) -> _Position: pass
+	def appendAnchor(self, targetPosition: _Position, preserveShape=True) -> Vertex: pass
+	def updateTangent(
+			self, tangentIndex: int, targetPosition: _Position,
+			rotate=True, scale=True, rotateLock=True, scaleLock=True) -> _Position: pass
+	def deleteAnchor(self, anchorIndex: int): pass
+
+class Mesh(Prim, _ABC):
+	closedU: bool
+	closedV: bool
+	numRows: int
+	numCols: int
+
+class Prims(_T.Sequence[Prim], _ABC):
+	owner: 'SOP'
+
+class SOP(OP):
+	compare: bool
+	template: bool
+	points: Points
+	prims: Prims
+	numPoints: int
+	numPrims: int
+	pointAttribs: Attributes
+	primAttribs: Attributes
+	vertexAttribs: Attributes
+	center: _Position
+	min: _Position
+	max: _Position
+	size: _Position
+
+	def save(self, filepath: str) -> str: pass
+
+class scriptSOP(SOP):
+	def destroyCustomPars(self): pass
+	def sortCustomPages(self, *pages): pass
+	def appendCustomPage(self, name: str) -> 'Page': pass
+	def clear(self): pass
+	# noinspection PyMethodOverriding
+	def copy(self, chop: CHOP): pass
+	def appendPoint(self) -> Point: pass
+	def appendPoly(self, numVertices: int, closed=True, addPoints=True) -> Poly: pass
+	def appendBezier(self, numVertices: int, closed=True, order=4, addPoints=True) -> Bezier: pass
+	def appendMesh(self, numROws: int, numCols: int, closedU=False, closedV=False, addPoints=True) -> Mesh: pass
+
 class TOP(OP): pass
 class MAT(OP): pass
 
 _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT]
 
 baseCOMP = panelCOMP = COMP
-evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = tableDAT = textDAT = scriptDAT = DAT
+evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = CHOP
-scriptSOP = SOP
 animationCOMP = COMP
 
 

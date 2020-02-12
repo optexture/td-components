@@ -18,11 +18,19 @@
 import json
 import collections
 
-def jsonToText(jsonObject):
+NUMATTRS = ('min', 'max', 'normMin', 'normMax', 'clampMin', 'clampMax')
+LISTATTRS = NUMATTRS + ('default', 'val', 'eval', 'expr', 'mode',
+								 'bindExpr', 'bindMaster', 'exportOP',
+								 'exportSource', 'prevMode')
+
+def jsonToText(jsonObject, indent='\t'):
 	"""
 	Return a JSON object as text
+
+	indent: The indent argument to json.dumps. Defaults to '\t' for readability.
+		Set to None for default json.dumps behavior.
 	"""
-	return json.dumps(jsonObject, indent='\t')
+	return json.dumps(jsonObject, indent=indent)
 
 def jsonToDat(jsonObject, dat):
 	"""
@@ -53,6 +61,88 @@ def datToJSON(dat, orderedDict=True, showErrors=False):
 	"""
 	return textToJSON(dat.text, orderedDict, showErrors)
 
+def serializeTDData(data, verbose=True):
+	"""
+	Return a serializable value for a piece of TD data. Standardizes serialized
+	format for TD types OP, Cell, Channel, Page, Par, ParMode.
+	:param data: anything
+	:param verbose: if True, provide extra details for Cell, Channel, Page, Par
+	:return: standardized serializable format or repr(data) if not of type
+				listed or int, float, str, long, bool, list, dict None
+	"""
+	TDObject = True
+	if isinstance(data, OP):
+		verboseData = ['OP']
+		tdData = data.path
+	elif isinstance(data, ParMode):
+		verboseData = ['ParMode']
+		tdData = data.name
+	elif isinstance(data, Par):
+		verboseData = ['Par', data.owner.path]
+		tdData = data.name
+	elif isinstance(data, Page):
+		verboseData = ['Page', data.owner.path]
+		tdData = data.name
+	elif isinstance(data, Channel):
+		verboseData = ['Channel', data.owner.path]
+		tdData = data.name
+	elif isinstance(data, Cell):
+		verboseData = ['Cell', data.owner.path]
+		tdData = [data.row, data.col]
+	else:
+		TDObject = False
+	if TDObject:
+		if verbose:
+			verboseData.append(tdData)
+			return verboseData
+		else:
+			return tdData
+	elif isinstance(data, (int, float, str, bool, type(None), list, dict)):
+		return data
+	else:
+		return repr(data)
+
+def deserializeTDData(data, verboseData=None):
+	"""
+	return a TD object if data is in format returned by serializeTDData
+		method with verbose=True. If verbose was not set to True, additionalInfo
+		must be provided if a TD object is to be returned. If a TD object is not
+		returned, data will be retuned unchanged.
+	:param data: anything
+	:param verboseData: The following lists must be provided to get a TD
+		object back for non-verbose data created by serializeTDData:
+		Parameter: ['Par', par owner path]
+		Page: ['Page', par owner path]
+		Channel: ['Channel', channel owner path]
+		Cell: ['Cell', cell owner path]
+	:return: TD object if appropriate info is provided. Otherwise returns data
+		argument unchanged.
+	"""
+	if verboseData:
+		testData = verboseData + [data]
+	else:
+		testData = data
+	if isinstance(testData, list):
+		try:
+			if testData[0] == 'OP' and len(testData) == 2:
+				return op(testData[-1])
+			elif testData[0] == 'ParMode' and len(testData) == 2:
+				return getattr(ParMode, testData[-1])
+			elif testData[0] == 'Par' and len(testData) == 3:
+				return getattr(op(testData[1]).par, testData[-1])
+			elif testData[0] == 'Page' and len(testData) == 3:
+				o = op(testData[1])
+				for p in o.customPages:
+					if p.name == testData[-1]:
+						return p
+			elif testData[0] == 'Channel' and len(testData) == 3:
+				return op(testData[1])[testData[-1]]
+			elif testData[0] == 'Cell' and len(testData) == 3:
+				return op(testData[1])[testData[-1][0], testData[-1][1]]
+		except:
+			return data
+	return data
+
 def parameterToJSONPar(p, extraAttrs=None, forceAttrLists=False):
 	"""
 	Convert a parameter or tuplet to a jsonable python dictionary.
@@ -64,8 +154,8 @@ def parameterToJSONPar(p, extraAttrs=None, forceAttrLists=False):
 		JSON for the entire tuplet.
 	"""
 	parAttrs = ('name', 'label', 'page', 'style', 'size', 'default', 'enable',
-				'startSection', 'cloneImmune', 'readOnly')
-	numAttrs = ('min', 'max', 'normMin', 'normMax', 'clampMin', 'clampMax')
+				'startSection', 'cloneImmune', 'readOnly', 'enableExpr')
+	numAttrs = NUMATTRS
 	# just grab the first parameter if it's a tuplet...
 	if isinstance(p, tuple):
 		p = p[0]
@@ -85,17 +175,26 @@ def parameterToJSONPar(p, extraAttrs=None, forceAttrLists=False):
 	jDict = collections.OrderedDict()
 	# grab attrs
 	for attr in parAttrs:
-		if attr == 'page' and p.isCustom:
-			jDict['page'] = p.page.name
-		elif attr == 'size':
-			if p.style in ('Int', 'Float'):
-				jDict['size'] = len(p.tuplet)
+		if attr == 'size' and p.style in ('Int', 'Float'):
+			jDict['size'] = len(p.tuplet)
+			continue
+		elif attr == 'eval':
+			if 'val' not in parAttrs:
+				jDict['val'] = serializeTDData(p.eval(), True)
+			continue
+		if not hasattr(p, attr):
+			continue
+		attrVal = getattr(p, attr)
+		if isinstance(attrVal, (Page, OP, ParMode)):
+			jDict[attr] = serializeTDData(attrVal, False)
 		elif attr == 'name':
 			jDict['name'] = p.tupletName
 		elif attr == 'menuSource':
 			jDict['menuSource'] = p.menuSource or ''
-		elif attr == 'mode':
-			jDict['mode'] = str(p.mode)
+		elif attr == 'tuplet':
+			jDict['tuplet'] = [p.name for p in attrVal]
+		elif isinstance(attrVal, (Cell, Channel, Par)):
+			jDict[attr] = serializeTDData(attrVal, True)
 		else:
 			try:
 				jDict[attr] = getattr(p, attr)
@@ -103,19 +202,29 @@ def parameterToJSONPar(p, extraAttrs=None, forceAttrLists=False):
 				pass
 	# deal with multi-value parameter stuff
 	if forceAttrLists or len(p.tuplet) > 1:
-		for attr in (numAttrs + ('default', 'val', 'expr', 'mode',
-								 'bindExpr')):
+		for attr in LISTATTRS:
 			if attr not in numAttrs and attr not in parAttrs:
 				continue
 			attrList = []
 			for multiPar in p.tuplet:
-				if attr == 'mode':
-					attrList.append(str(multiPar.mode))
+				if attr == 'eval':
+					val = multiPar.eval()
 				else:
-					attrList.append(getattr(multiPar, attr))
-			# if we have any differing values, store all as list
-			if forceAttrLists or len(set(attrList)) > 1:
-				jDict[attr] = attrList
+					val = getattr(multiPar, attr)
+				attrList.append(serializeTDData(val, attr == 'eval' and
+								isinstance(val,(Cell, Channel, Par))))
+			if forceAttrLists:
+				makeList = True
+			else:
+				# if we have any differing values, store all as list
+				makeList = False
+				for i in range(len(attrList) - 1):
+					if attrList[i] != attrList[i+1]:
+						makeList = True
+						break
+
+			if forceAttrLists or makeList:
+				jDict['val' if attr == 'eval' else attr] = attrList
 	return jDict
 
 def pageToJSONDict(page, extraAttrs=None, forceAttrLists=False):
@@ -136,34 +245,45 @@ def pageToJSONDict(page, extraAttrs=None, forceAttrLists=False):
 													 forceAttrLists)
 	return jPage
 
-def opToJSONOp(op, extraAttrs=None, forceAttrLists=False):
+def opToJSONOp(op, extraAttrs=None, forceAttrLists=False,
+			   includeCustomPages=True, includeBuiltInPages=False):
 	"""
-	Convert all custom parameter pages to a jsonable python dict. Format:
+	Convert parameter pages to a jsonable python dict. Format:
 		{page name: {parameter name: {parameter attributes, ...}, ...}, ...}
 	extraAttrs is a list or tuple of par attribute names that are not normally
 		stored. For example, 'val' and 'order'.
 	forceAttrLists: If True, all attributes will be stored in a list with the
 		length of the tuplet
+	includeCustomPages: If True, include custom par pages
+	includeBuiltInPages: If True, include builtin pages
 	"""
 	jOp = collections.OrderedDict()
-	for page in op.customPages:
-		jOp[page.name] = pageToJSONDict(page, extraAttrs,
-										forceAttrLists)
+	if includeBuiltInPages:
+		for page in op.pages:
+			jOp[page.name] = pageToJSONDict(page, extraAttrs,
+											forceAttrLists)
+	if includeCustomPages:
+		for page in op.customPages:
+			jOp[page.name] = pageToJSONDict(page, extraAttrs,
+											forceAttrLists)
 	return jOp
 
 def addParameterFromJSONDict(comp, jsonDict, replace=True, setValues=True,
-							 ignoreAttrErrors=False):
+							 ignoreAttrErrors=False, fixParNames=True):
 	"""
-	Add a parameter to comp as defined in a parameter JSON dict.
+	Add a parameter to comp as defined in a parameter JSON dict. To set values,
+	expressions, or bind expressions, provide 'val', 'expr', or 'bindExpr' in
+	JSON.
 	If replace is False, will error out if the parameter already exists
-	If setValues is True, values will be set to parameter's defaults
+	If setValues is True, values will be set to provided default
 	If ignoreAttrErrors is True, no exceptions for bad attrs in json
 
 	returns a list of newly created parameters
 	"""
 	requiredKeys = {'page', 'style', 'name'}
 	# issubset checks par dict for the required keys of the set requiredKeys
-	if requiredKeys.issubset(jsonDict):
+	if requiredKeys.issubset(jsonDict) and \
+									all([jsonDict[k] for k in requiredKeys]):
 		pStyle = jsonDict['style']
 		parName = jsonDict['name']
 		pageName = jsonDict['page']
@@ -171,6 +291,8 @@ def addParameterFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 		raise ValueError ('Parameter definition missing required '
 						  'attributes. (' + str(requiredKeys) + ')',
 						  jsonDict)
+	if fixParNames:
+		parName = parName.capitalize()
 	label = jsonDict.get('label', parName)
 	# set up page if necessary
 	page = None
@@ -204,22 +326,22 @@ def addParameterFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 			newPars = getattr(comp.par, parName).tuplet
 	# create parameter and stash newly created parameter(s) if necessary
 	if newPars is None:
-		if size == 1:
-			newPars = appendFunc(parName, label=label, replace=replace)
-		else:
+		if pStyle in ['Int', 'Float'] and size != 1:
 			newPars = appendFunc(parName, label=label, size=size,
 								 								replace=replace)
+		else:
+			newPars = appendFunc(parName, label=label, replace=replace)
 	else:
 		newPars[0].label = label
 		newPars[0].page = page
 
 	# set additional attributes if they're in parDict
 	# can have multi-vals:
-	listAttributes = ('default', 'min', 'max', 'normMin', 'normMax', 'clampMin',
-					  'clampMax', 'val', 'expr', 'bindExpr', 'mode')
+	listAttributes = LISTATTRS
 	for index, newPar in enumerate(newPars):
 		# go through other attributes
-		if setValues and not jsonDict.get('val'):
+		if setValues and not jsonDict.get('val') \
+											and not newPar.style == 'Python':
 			try:
 				try:
 					newPar.val = jsonDict['default']
@@ -234,22 +356,39 @@ def addParameterFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 				([('mode', jsonDict['mode'])] if 'mode' in jsonDict else []):
 			if attr in ['style', 'name', 'label', 'size', 'page']:
 				continue
+			if attr in ['expr', 'bindExpr'] and not value:
+				value = ''
+			if attr in ['val', 'default'] and newPar.style == 'Python':
+				continue
 			try:
 				# apply attributes that can contain an item or a list
 				if attr in listAttributes:
 					if isinstance(value, (list, tuple)):
 						if attr == 'mode':
-							setattr(newPar, attr,
-									getattr(ParMode, value[index]))
+							if value[index] != 'EXPORT':
+								setattr(newPar, attr,
+											getattr(ParMode, value[index]))
+						elif attr in ['expr', 'bindExpr'] and not value[index]:
+							setattr(newPar, attr, '')
 						else:
 							try:
 								setattr(newPar, attr, value[index])
+								if setValues and attr == 'default' \
+													and 'val' not in jsonDict:
+									newPar.val = value[index]
 							except:
-								debug(newPar, attr, value)
+								if not ignoreAttrErrors:
+									debug('addPar error:', newPar, attr, value)
+									raise
 					elif attr == 'mode':
-						setattr(newPar, attr, getattr(ParMode, value))
+						if value != 'EXPORT':
+							newPar.mode = getattr(ParMode, value)
 					else:
 						setattr(newPar, attr, value)
+						if setValues and attr == 'default' \
+													and 'val' not in jsonDict:
+							newPar.val = value
+
 				# apply standard attributes
 				else:
 					setattr(newPar, attr, value)
@@ -265,7 +404,8 @@ def addParameterFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 	return newPars
 
 def addParametersFromJSONList(comp, jsonList, replace=True, setValues=True,
-							  destroyOthers=False, newAtEnd=True):
+							  destroyOthers=False, newAtEnd=True,
+							  fixParNames=True):
 	"""
 	Add parameters to comp as defined in list of parameter JSON dicts.
 	If replace is False, will cause exception if the parameter already exists
@@ -277,7 +417,8 @@ def addParametersFromJSONList(comp, jsonList, replace=True, setValues=True,
 	parNames = []
 	pageNames = set()
 	for jsonPar in jsonList:
-		newPars = addParameterFromJSONDict(comp, jsonPar, replace, setValues)
+		newPars = addParameterFromJSONDict(comp, jsonPar, replace, setValues,
+										   fixParNames)
 		parNames += [p.name for p in newPars]
 		pageNames.add(newPars[0].page.name)
 	if destroyOthers:
@@ -287,7 +428,8 @@ def addParametersFromJSONList(comp, jsonList, replace=True, setValues=True,
 	return parNames, pageNames
 
 def addParametersFromJSONDict(comp, jsonDict, replace=True, setValues=True,
-							  destroyOthers=False, newAtEnd=True):
+							  destroyOthers=False, newAtEnd=True,
+							  fixParNames=True):
 	"""
 	Add parameters to comp as defined in dict of parameter JSON dicts.
 	If replace is False, will error out if the parameter already exists
@@ -299,7 +441,8 @@ def addParametersFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 	parNames = []
 	pageNames = set()
 	for jsonPar in jsonDict.values():
-		newPars = addParameterFromJSONDict(comp, jsonPar, replace, setValues)
+		newPars = addParameterFromJSONDict(comp, jsonPar, replace, setValues,
+										   fixParNames)
 		parNames += [p.name for p in newPars]
 		pageNames.add(newPars[0].page.name)
 	if destroyOthers:
@@ -309,7 +452,8 @@ def addParametersFromJSONDict(comp, jsonDict, replace=True, setValues=True,
 	return parNames, pageNames
 
 def addParametersFromJSONOp(comp, jsonOp, replace=True, setValues=True,
-							  destroyOthers=False, newAtEnd=True):
+							  destroyOthers=False, newAtEnd=True,
+							fixParNames=True):
 	"""
 	Add parameters to comp as defined in dict of page JSON dicts.
 	If replace is False, will error out if the parameter already exists
@@ -322,7 +466,8 @@ def addParametersFromJSONOp(comp, jsonOp, replace=True, setValues=True,
 	pageNames = set()
 	for jsonPage in jsonOp.values():
 		newParNames, newPages = addParametersFromJSONDict(comp, jsonPage,
-										replace, setValues, newAtEnd=newAtEnd)
+										replace, setValues, newAtEnd=newAtEnd,
+										fixParNames=fixParNames)
 		parNames += newParNames
 		pageNames.update(newPages)
 	if destroyOthers:
@@ -333,8 +478,8 @@ def addParametersFromJSONOp(comp, jsonOp, replace=True, setValues=True,
 
 def destroyOtherPagesAndParameters(comp, pageNames, parNames):
 	"""
-	Destroys all pages and parameters on comp that are not found in pageNames
-	or parNames
+	Destroys all custom pages and parameters on comp that are not found in
+	pageNames or parNames
 	"""
 	for p in comp.customPars:
 		try:

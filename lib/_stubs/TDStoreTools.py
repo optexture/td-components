@@ -22,7 +22,7 @@ from abc import ABCMeta, abstractmethod
 from numbers import Number
 
 
-class StorageManager(collections.MutableMapping):
+class StorageManager(MutableMapping):
 	def __init__(self, extension, ownerComp, storedItems=None,
 				 restoreAllDefaults=False, sync=True, dictName=None,
 				 locked=True):
