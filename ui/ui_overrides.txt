@@ -1,5 +1,4 @@
 template	path	parameter	value
-global_slider	*	Font	'Roboto'
 global_slider	*	Labelfontbold	0
 global_slider	*	Labelbgcolorr	0.2
 global_slider	*	Labelbgcolorg	0.2
@@ -29,11 +28,9 @@ global_slider	*	Sliderindicatorcolorr	0.325
 global_slider	*	Sliderindicatorcolorg	0.325
 global_slider	*	Sliderindicatorcolorb	0.325
 global_slider	*	Sliderindicatorcolora	1.0
-button	*_button	Buttonfont	'Roboto'
 buttonicon	*_buttonicon	Buttonfont	'Material Design Icons'
 dropfield	*_dropfield	Buttonfont	'Material Design Icons'
 filefield	*_filefield	Buttonfont	'Material Design Icons'
-radio	*_radio	Radiofont	'Roboto'
 radio	*_radio	Radiobasecolorr	0.0
 radio	*_radio	Radiobasecolorg	0.0
 radio	*_radio	Radiobasecolorb	0.0
@@ -63,9 +60,7 @@ radio	*_radio	Radioborderbcolorg	0.0
 radio	*_radio	Radioborderbcolorb	0.0
 radio	*_radio	Radioborderbcolora	1.0
 section	*_section	Buttonfont	'Material Design Icons'
-toggle	*_toggle	Buttonfont	'Roboto'
 toggleicon	*_toggleicon	Buttonfont	'Material Design Icons'
-trigger	*_trigger	Buttonfont	'Roboto'
 global_toggle	*	Buttonbasecolorr	0.0
 global_toggle	*	Buttonbasecolorg	0.0
 global_toggle	*	Buttonbasecolorb	0.0
