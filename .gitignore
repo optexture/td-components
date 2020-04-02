@@ -3,3 +3,4 @@ CrashAutoSave*
 .idea
 *.pyc
 *-log.txt
+.DS_Store
