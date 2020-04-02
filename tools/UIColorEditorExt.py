@@ -8,6 +8,18 @@ class UIColorEditor:
 			key: ui.colors[key]
 			for key in ui.colors
 		}
+
+	@staticmethod
+	def BuildColorNameTable(dat):
+		dat.clear()
+		dat.appendRow(['fullname', 'namespace', 'subname'])
+		for fullname in sorted(ui.colors):
+			fullname: str
+			if '.' not in fullname:
+				dat.appendRow([fullname, '', fullname])
+			else:
+				parts = fullname.split('.', maxsplit=3)
+				dat.appendRow([fullname, '.'.join(parts[:-1]), parts[-1]])
 	
 	@staticmethod
 	def BuildColorTable(dat):
