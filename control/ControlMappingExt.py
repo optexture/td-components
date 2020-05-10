@@ -57,9 +57,9 @@ def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 		'cc',
 		'chan',
 	])
-	sliders = definition.op('sliders') if definition else None  # type: DAT
-	buttons = definition.op('buttons') if definition else None  # type: DAT
-	for ctrlTable in [sliders, buttons]:
+	if not definition:
+		return
+	for ctrlTable in definition.ops('sliders', 'buttons'):
 		if not ctrlTable or not ctrlTable.valid or ctrlTable.numCols < 2:
 			continue
 		for ctrlRow in range(ctrlTable.numRows):
@@ -87,25 +87,6 @@ def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 class ControlMapper:
 	def __init__(self, ownerComp: 'COMP'):
 		self.ownerComp = ownerComp
-
-	@staticmethod
-	def PrepareDevices(dat):
-		dat.appendCol(['label'])
-		for i in range(1, dat.numRows):
-			indev = dat[i, 'indevice']
-			outdev = dat[i, 'outdevice']
-			if indev == outdev:
-				dat[i, 'label'] = indev
-			else:
-				dat[i, 'label'] = '{} / {}'.format(indev, outdev)
-		# Ensure that the table has placeholders to fill up to 16 entries
-		for i in range(dat.numRows, 17):
-			dat.appendRow([i])
-			name = '({})'.format(i)
-			dat[i, 'indevice'] = name
-			dat[i, 'outdevice'] = name
-			dat[i, 'label'] = name + ' (unknown)'
-			dat[i, 'channel'] = 1
 
 	@staticmethod
 	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
