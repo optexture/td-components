@@ -50,6 +50,23 @@ class ControlTarget:
 				if not dat.col(col):
 					dat.appendCol([col])
 
+	def AddMappingForParam(self, par: 'Par', control: str = None, enable: bool = False):
+		self._InitTable(createMissing=True, clearExisting=False)
+		table = self.ownerComp.par.Maptable.eval()  # type: DAT
+		root = self.ownerComp.par.Targetroot.eval()
+		if par.owner == root:
+			path = ''
+		elif root:
+			path = root.relativePath(par.owner)
+		else:
+			path = par.owner.path
+		i = table.numRows
+		table.appendRow([])
+		table[i, 'path'] = path
+		table[i, 'param'] = par.name
+		table[i, 'enable'] = int(enable)
+		table[i, 'control'] = control or ''
+
 def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 	outDat.clear()
 	outDat.appendRow([
