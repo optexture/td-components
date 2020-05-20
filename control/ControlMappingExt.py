@@ -104,6 +104,7 @@ def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
 class ControlMapper:
 	def __init__(self, ownerComp: 'COMP'):
 		self.ownerComp = ownerComp
+		self.statePar = ownerComp.op('iparMapperState').par
 
 	@staticmethod
 	def BuildDeviceControls(outDat: 'DAT', definition: 'COMP'):
@@ -154,6 +155,25 @@ class ControlMapper:
 				opPars[path] = [param]
 		for path, params in opPars.items():
 			outDat.appendRow([path] + params)
+
+	def HandleDrop(self, dropName, dropExt, baseName, destPath):
+		print(f'{self.ownerComp}.HandleDrop(dropName: {dropName}, dropExt: {dropExt}, baseName: {baseName}, destPath: {destPath}')
+		if dropExt != 'parameter':
+			return
+		o = op(baseName)
+		print(f'DROP O {o!r}')
+		if not o:
+			return
+		par = getattr(o.par, dropName, None)
+		print(f'DROP PAR {par!r}')
+		if par is None:
+			return
+		target = self.statePar.Selectedtarget.eval()  # type: ControlTarget
+		if not target:
+			return
+		target.AddMappingForParam(par)
+
+
 
 def _AddToMapTable(
 		outDat: 'DAT',
