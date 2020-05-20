@@ -129,7 +129,7 @@ class ControlMapper:
 		for target in ops(*targets):
 			mappings = target.op('mappings')
 			if not mappings or mappings.numRows < 2:
-				return
+				continue
 			_AddToMapTable(
 				outDat,
 				mappings,
