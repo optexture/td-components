@@ -14,7 +14,7 @@ class ComponentPicker:
 	@staticmethod
 	def BuildComponentTable(dat: 'DAT', files: 'DAT'):
 		dat.clear()
-		dat.appendRow(['relpath', 'name', 'modified', 'timestamp', 'toxpath', 'thumbpath'])
+		dat.appendRow(['relpath', 'name', 'modified', 'timestamp', 'tox', 'thumb', 'folder'])
 		for i in range(1, files.numRows):
 			if files[i, 'extension'] != 'tox':
 				continue
@@ -25,6 +25,7 @@ class ComponentPicker:
 				modified = ''
 			else:
 				modified = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M')
+			folder = files[i, 'folder'].val
 			dat.appendRow([
 				relPath,
 				re.sub(r'([\w_ ]+)/\1\.tox$', r'\1', relPath),
@@ -32,6 +33,7 @@ class ComponentPicker:
 				timestamp,
 				tdu.collapsePath(files[i, 'path'].val),
 				tdu.collapsePath(thumbPath),
+				tdu.collapsePath(folder) if folder else '',
 			])
 
 	def UpdateListFromPar(self, par: 'Par' = None):
