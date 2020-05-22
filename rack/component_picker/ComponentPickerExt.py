@@ -59,17 +59,6 @@ class ComponentPicker:
 	def OnListRollover(self, info: dict):
 		self.statePar.Hoverrow = info.get('row', -1)
 
-	def OnClickHeader(self, info: dict):
-		#print('CLICK HEADER', info)
-		listWidget = self.ownerComp.op('component_list')
-		col = info.get('col')
-		if col == '':
-			return
-		if str(col) == listWidget.par.Sortcols:
-			listWidget.par.Sortreverse = not listWidget.par.Sortreverse
-		else:
-			listWidget.par.Sortcols = col
-
 def _findThumbPath(files: 'DAT', toxPath: str):
 	toxPathBase = re.sub('.tox$', '', toxPath)
 	for path in files.col('relpath')[1:]:
