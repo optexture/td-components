@@ -91,6 +91,14 @@ global_toggle	*	Buttonbordercolorg	1.0
 global_toggle	*	Buttonbordercolorb	1.0
 global_toggle	*	Buttonbordercolora	1.0
 section	*_section	Buttontype	'Toggle Down'
+section	*_section	Sectionlabelbgcolorr	0.0
+section	*_section	Sectionlabelfontcolorr	0.956863
+section	*_section	Sectionlabelbgcolorg	0.0
+section	*_section	Sectionlabelfontcolorg	1.0
+section	*_section	Sectionlabelbgcolorb	0.0
+section	*_section	Sectionlabelfontcolorb	0.498039
+section	*_section	Sectionlabelbgcolora	0.0
+section	*_section	Sectionlabelfontcolora	0.6
 overlay	*_overlay	Markercolorr	0.3276
 overlay	*_overlay	Markercolorg	0.52
 overlay	*_overlay	Markercolorb	0.343633
