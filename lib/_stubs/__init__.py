@@ -370,10 +370,10 @@ class OP:
 	dock: 'OP'
 	docked: _T.List['_AnyOpT']
 
-	inputs: list
-	outputs: list
-	inputConnectors: list
-	outputConnectors: list
+	inputs: _T.List['_AnyOpT']
+	outputs: _T.List['_AnyOpT']
+	inputConnectors: _T.List['Connector']
+	outputConnectors: _T.List['Connector']
 
 	cookFrame: float
 	cookTime: float
@@ -422,11 +422,6 @@ class OP:
 
 	def op(self, path) -> '_AnyOpT': pass
 	def ops(self, *args) -> _T.List['_AnyOpT']: pass
-	def findChildren(self, maxDepth=1, tags=None) -> '_T.List[_AnyOpT]': pass
-	def copy(self, o: '_AnyOpT', name=None) -> 'op': pass
-	def create(self, OPtype, name, initialize=True) -> '_AnyOpT': pass
-	def loadTox(self, filepath: str, unwired=False, pattern=None) -> 'OP': pass
-	def save(self, filepath: str) -> 'str': pass
 	def shortcutPath(self, o: '_AnyOpT', toParName=None) -> str: pass
 	def relativePath(self, o: '_AnyOpT') -> str: pass
 	def openMenu(self, x=None, y=None): pass
@@ -463,6 +458,9 @@ def op(path) -> '_AnyOpT': pass
 
 op.TDResources = _Expando()
 op.TDResources.op = op
+
+iop = _Expando()  # type: _T.Any
+ipar = _Expando()  # type: _T.Any
 
 def ops(*paths) -> _T.List['_AnyOpT']: pass
 
@@ -802,12 +800,104 @@ class CHOP(OP):
 	def save(self, filepath) -> str: pass
 
 class COMP(OP):
-	inputCOMPConnectors: list
-	outputCOMPConnectors: list
+	extensions: list
+	extensionsReady: bool
+	clones: _T.List['COMP']
+	componentCloneImmune: bool
+	vfs: '_VFS'
+	dirty: bool
+	externalTimeStamp: int
+	currentChild: '_AnyOpT'
+	selectedChildren: _T.List['_AnyOpT']
+	pickable: bool
+	isPrivate: bool
+	isPrivacyActive: bool
+	isPrivacyLicensed: bool
+	privacyFirmCode: int
+	privacyProductCode: int
+	privacyDeveloperName: str
+	privacyDeveloperEmail: str
+	inputCOMPs: _T.List['_AnyCompT']
+	outputCOMPs: _T.List['_AnyCompT']
+	inputCOMPConnectors: _T.List['Connector']
+	outputCOMPConnectors: _T.List['Connector']
+
 
 	def destroyCustomPars(self): pass
 	def sortCustomPages(self, *pages): pass
 	def appendCustomPage(self, name: str) -> 'Page': pass
+	def findChildren(
+			self,
+			type: _T.Type = None,
+			path: str = None,
+			depth: int = None,
+			text: str = None,
+			comment: str = None,
+			maxDepth: int = 1,
+			tags: _T.List[str] = None,
+			allTags: _T.List[str] = None,
+			parValue: str = None,
+			parExpr: str = None,
+			parName: str = None,
+			onlyNonDefaults: bool = False,
+			key: _T.Callable[['_AnyOpT'], bool] = None,
+	) -> '_T.List[_AnyOpT]': pass
+	def copy(self, o: '_AnyOpT', name=None) -> 'op': pass
+	def create(self, OPtype: _T.Union[str, _T.Type['_AnyOpT']], name: str, initialize=True) -> '_AnyOpT': pass
+	def collapseSelected(self): pass
+	def copyOPs(self, listOfOPs: _T.List['_AnyOpT']) -> _T.List['_AnyOpT']: pass
+	def initializeExtensions(self, index: int = None) -> _T.Any: pass
+	def loadTox(self, filepath: str, unwired=False, pattern: str = None, password: str = None) -> 'OP': pass
+	def resetNetworkView(self, recurse: bool = False): pass
+	def save(self, filepath: str, createFolders: bool = False, password: str = None) -> 'str': pass
+	def saveExternalTox(self, recruse: bool = False, password: str = None) -> int: pass
+	def accessPrivateContents(self, key: str) -> bool: pass
+	@_T.overload
+	def addPrivacy(self, key: str, developerName: str = None): pass
+	@_T.overload
+	def addPrivacy(self, firmCode: int, productCode: int, developerName: str = None, developerEmail: str = None): pass
+	def addPrivacy(self, *args, **kwargs): pass
+	def blockPrivateContents(self, key: str): pass
+	def removePrivacy(self, key: str) -> bool: pass
+	def setVar(self, name: str, value): pass
+	def unsetVar(self, name: str): pass
+	def vars(self, *patterns: str) -> list: pass
+
+Panel = _T.Any
+
+class PanelCOMP(COMP):
+	panel: Panel
+	panelRoot: '_AnyOpT'
+	x: int
+	y: int
+	width: int
+	height: int
+	marginX: int
+	marginY: int
+	marginWidth: int
+	marginHeight: int
+
+	def panelParent(self, n: int = 1) -> _T.Optional['PanelCOMP']: pass
+	def interactMouse(
+			self,
+			u, v,
+			leftClick: int = 0, middleClick: int = 0, rightClick: int = 0,
+			left=False, middle=False, right=False,
+			wheel: float = 0, pixels=False, screen=False, quiet=True
+	) -> 'PanelCOMP':
+		pass
+
+	def interactTouch(
+			self,
+			u, v,
+			hover='id', start='id', move='id', end='id',
+			pixels=False, screen=False, quiet=True, aux='data') -> 'PanelCOMP':
+		pass
+	def interactClear(self): pass
+	def interactStatus(self) -> _T.List[list]: pass
+	def locateMouse(self) -> _T.Tuple[float, float]: pass
+	def locateMouseUV(self) -> _T.Tuple[float, float]: pass
+	def setFocus(self, moveMouse=False): pass
 
 class windowCOMP(COMP):
 	scalingMonitorIndex: int
@@ -840,6 +930,12 @@ class timeCOMP(COMP):
 	tempo: float
 	signature1: int
 	signature2: int
+
+_AnyCompT = _T.Union[COMP, PanelCOMP, windowCOMP, timeCOMP]
+
+_VFS = _T.Any
+class Connector:
+	pass
 
 _AttributeDataElementT = _T.Union[float, int, str]
 _AttributeDataTupleT = _T.Union[
@@ -970,7 +1066,8 @@ class MAT(OP): pass
 
 _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT]
 
-baseCOMP = panelCOMP = COMP
+baseCOMP = COMP
+panelCOMP = PanelCOMP
 evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = CHOP
 animationCOMP = COMP
