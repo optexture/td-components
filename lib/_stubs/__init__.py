@@ -680,6 +680,20 @@ class tdu:
 
 	ArcBall = _ArcBall
 
+	fileTypes = {
+		'audio': ['aif', 'aiff', 'flac', 'm4a', 'mp3', 'ogg', 'wav'],
+		'channel': ['aif', 'aiff', 'bchan', 'bclip', 'chan', 'clip', 'csv', 'wav'],
+		'component': ['tox'],
+		'geometry': ['bhclassic', 'hclassic', 'obj', 'tog'],
+		'image': ['bmp', 'dds', 'dpx', 'exr', 'ffs', 'fit', 'fits', 'gif', 'hdr', 'jpeg', 'jpg', 'pic', 'png', 'swf', 'tga', 'tif', 'tiff'],
+		'midi': ['mid', 'midi'],
+		'movie': ['3gp', 'avi', 'flv', 'm2ts', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'mts', 'mxf', 'r3d', 'ts', 'webm', 'wmv'],
+		'object': ['3ds', 'abc', 'dae', 'dxf', 'fbx', 'obj', 'usd', 'usda', 'usdc'],
+		'project': ['toe'],
+		'text': ['csv', 'dat', 'frag', 'glsl', 'html', 'md', 'py', 'rtf', 'tsv', 'txt', 'vert', 'xml'],
+		'material': ['sbsar'],
+		'pointdata': ['csv', 'exr', 'fit', 'fits', 'obj', 'ply', 'pts', 'txt', 'xyz']}
+
 class JustifyType(_E.Enum):
 	TOPLEFT = 0
 	TOPCENTER = 0
