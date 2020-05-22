@@ -868,6 +868,7 @@ Panel = _T.Any
 class PanelCOMP(COMP):
 	panel: Panel
 	panelRoot: '_AnyOpT'
+	panelChildren: _T.List['_AnyCompT']
 	x: int
 	y: int
 	width: int
@@ -935,7 +936,16 @@ _AnyCompT = _T.Union[COMP, PanelCOMP, windowCOMP, timeCOMP]
 
 _VFS = _T.Any
 class Connector:
-	pass
+	index: int
+	isInput: bool
+	isOutput: bool
+	inOP: '_AnyOpT'
+	outOP: '_AnyOpT'
+	owner: '_AnyOpT'
+	connections: _T.List['Connector']
+
+	def connect(self, target: _T.Union['_AnyOpT', 'Connector']): pass
+	def disconnect(self): pass
 
 _AttributeDataElementT = _T.Union[float, int, str]
 _AttributeDataTupleT = _T.Union[
@@ -1064,13 +1074,14 @@ class scriptSOP(SOP):
 class TOP(OP): pass
 class MAT(OP): pass
 
-_AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT]
+_AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT, '_AnyCompT']
 
 baseCOMP = COMP
 panelCOMP = PanelCOMP
 evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = CHOP
 animationCOMP = COMP
+inTOP = outTOP = TOP
 
 class objectCOMP(COMP):
 	localTransform: _Matrix
