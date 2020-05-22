@@ -211,6 +211,7 @@ class Channel:
 	vals: _T.List[float]
 
 	def __getitem__(self, index: int) -> float: pass
+	def __setitem__(self, index: int, value: _T.Union[int, float]): pass
 	def eval(self, index: _T.Optional[int] = None) -> float: pass
 	def evalFrame(self, frame) -> float: pass
 	def evalSeconds(self, secs) -> float: pass
@@ -467,8 +468,6 @@ def ops(*paths) -> _T.List['_AnyOpT']: pass
 
 def var(name) -> str: pass
 
-def run(codeorwhatever, *args, delayFrames=0, delayMilliSeconds=0, delayRef=None): pass
-
 class td:
 	Monitor = Monitor
 	Monitors = Monitors
@@ -507,6 +506,8 @@ class td:
 	@classmethod
 	def varOwner(cls, varName) -> _T.Optional['OP']: pass
 
+
+run = td.run
 
 class _Matrix:
 	vals: _T.List[float]
@@ -648,6 +649,15 @@ class tdu:
 	@staticmethod
 	def remap(inputVal, fromMin, fromMax, toMin, toMax): pass
 
+	@staticmethod
+	def rand(seed: _T.Any) -> float: pass
+
+	@staticmethod
+	def base(s: str) -> str: pass
+
+	@staticmethod
+	def digits(s: str) -> _T.Optional[int]: pass
+
 	Dependency = _Dependency
 	Position = _Position
 	Vector = _Vector
@@ -709,14 +719,25 @@ class DAT(OP):
 	# noinspection PyMethodOverriding
 	def copy(self, dat: 'DAT'): pass
 
-	def appendRow(self, cells: _T.List[_T.Any]): pass
-	def appendCol(self, cells: _T.List[_T.Any]): pass
-	def appendRows(self, cells: _T.List[_T.List[_T.Any]]): pass
-	def appendCols(self, cells: _T.List[_T.List[_T.Any]]): pass
+	def appendRow(self, cells: _T.List[_T.Any], nameOrIndex: _NameOrIndex = None, sort: _NameOrIndex = None): pass
+	def appendCol(self, cells: _T.List[_T.Any], nameOrIndex: _NameOrIndex = None, sort: _NameOrIndex = None): pass
+	def appendRows(self, cells: _T.List[_T.List[_T.Any]], nameOrIndex: _NameOrIndex = None, sort: _NameOrIndex = None):
+		pass
+	def appendCols(self, cells: _T.List[_T.List[_T.Any]], nameOrIndex: _NameOrIndex = None, sort: _NameOrIndex = None):
+		pass
+	def insertRow(self, vals: _T.List[_T.Any], nameOrIndex: _NameOrIndex, sort=None) -> int: pass
+	def insertCol(self, vals: _T.List[_T.Any], nameOrIndex: _NameOrIndex, sort=None) -> int: pass
+	def replaceRow(self, nameOrIndex: _NameOrIndex, vals: _T.List[_T.Any], entireRow=True) -> int: pass
+	def replaceCol(self, nameOrIndex: _NameOrIndex, vals: _T.List[_T.Any], entireCol=True) -> int: pass
+	def deleteRow(self, nameOrIndex: _NameOrIndex): pass
+	def deleteCol(self, nameOrIndex: _NameOrIndex): pass
+	def deleteRows(self, vals: _NamesOrIndices): pass
+	def deleteCols(self, vals: _NamesOrIndices): pass
 	def setSize(self, numrows: int, numcols: int): pass
 	def __getitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex]) -> Cell: pass
 	def __setitem__(self, rowcol: _T.Tuple[_NameOrIndex, _NameOrIndex], value): pass
-	def cell(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> Cell: pass
+	def cell(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> _T.Optional[Cell]:
+		pass
 	def cells(self, rowNameOrIndex: _NameOrIndex, colNameOrIndex: _NameOrIndex, caseSensitive=True) -> _T.List[Cell]: pass
 	def findCell(
 			self,
@@ -737,6 +758,16 @@ class DAT(OP):
 	isTable: bool
 	isText: bool
 	locals: _T.Dict[str, _T.Any]
+
+class oscoutDAT(DAT):
+	def sendBytes(self, *messages) -> int: pass
+
+	def sendOSC(
+			self, *addressesFollowedByValueLists: _T.Union[str, _T.List[_T.Any]],
+			asBundle=True, useNonStandardTypes=True, use64BitPrecision=False) -> int:
+		pass
+
+	def send(self, *messages: str, terminator='') -> int: pass
 
 class CHOP(OP):
 	numChans: int
@@ -930,6 +961,20 @@ evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT
 parameterCHOP = nullCHOP = selectCHOP = CHOP
 animationCOMP = COMP
 
+class objectCOMP(COMP):
+	localTransform: _Matrix
+	worldTransform: _Matrix
+	def transform(self) -> _Matrix: pass
+	def setTransform(self, matrix: _Matrix): pass
+	def preTransform(self) -> _Matrix: pass
+	def setPreTransform(self, matrix: _Matrix): pass
+	def relativeTransform(self, target: COMP) -> _Matrix: pass
+	def importABC(self, filepath, lights=True, cameras=True, mergeGeometry=True, gpuDeform=True, rate=None, textureFolder=None, geometryFolder=None, animationFolder=None): pass
+	def importFBX(self, filepath, lights=True, cameras=True, mergeGeometry=True, gpuDeform=True, rate=None, textureFolder=None, geometryFolder=None, animationFolder=None): pass
+
+class cameraCOMP(objectCOMP):
+	def projectionInverse(self, x, y) -> _Matrix: pass
+	def projection(self, x, y) -> _Matrix: pass
 
 class scriptCHOP(CHOP):
 	def destroyCustomPars(self): pass
