@@ -16,8 +16,9 @@ class ComponentEditor:
 		if not tox:
 			comp.par.externaltox = ''
 			comp.destroyCustomPars()
-			for child in comp.children:
-				child.destroy()
+			for child in list(comp.children):
+				if child.valid:
+					child.destroy()
 		else:
 			msg = f'Loading component {tdu.expandPath(tox)}'
 			print(msg)
