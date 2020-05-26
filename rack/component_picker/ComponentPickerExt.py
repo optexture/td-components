@@ -32,7 +32,7 @@ class ComponentPicker:
 				modified,
 				timestamp,
 				tdu.collapsePath(files[i, 'path'].val),
-				tdu.collapsePath(thumbPath),
+				tdu.collapsePath(thumbPath) if thumbPath else '',
 				tdu.collapsePath(folder) if folder else '',
 			])
 

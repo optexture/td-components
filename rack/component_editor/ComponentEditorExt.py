@@ -1,3 +1,5 @@
+import re
+
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
@@ -46,10 +48,8 @@ class ComponentEditor:
 		ui.status = msg
 		img = ipar.compEditor.Thumbfile.eval()
 		if not img:
-			# TODO: maybe prompt to save thumbnail? or auto generate a path
-			pass
-		else:
-			self.ownerComp.op('video_output').save(img)
+			img = re.sub(r'\.tox$', '.png', tox)
+		self.ownerComp.op('video_output').save(img)
 
 	@staticmethod
 	def CustomizeComponent():
