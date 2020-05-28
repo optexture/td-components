@@ -22,6 +22,8 @@ import TDStoreTools
 import warnings
 import datetime
 
+TDJ = op.TDModules.mod.TDJSON
+
 
 def clamp(value, inMin, inMax):
 	"""returns the value clamped between inMin and inMax"""
@@ -737,15 +739,16 @@ def bindChain(par, parsOnly=False):
 	:return: list of [par, par's bind master, ...]
 	"""
 	chain = [par]
-	try:
-		master = par.mode == ParMode.BIND and par.bindMaster
-	except:
+	if par.mode == ParMode.BIND and par.bindMaster is not None:
+		master = par.bindMaster
+	else:
 		master = None
-	while master:
+	while master is not None:
 		chain.append(master)
-		try:
-			master = master.mode == ParMode.BIND and master.bindMaster
-		except:
+		if (not hasattr(master, 'mode') or master.mode == ParMode.BIND)\
+				and getattr(master, 'bindMaster', None) is not None:
+			master = master.bindMaster
+		else:
 			master = None
 	if parsOnly and not isinstance(chain[-1], Par):
 		chain.pop(-1)
@@ -796,3 +799,28 @@ def getCustomPage(comp, name):
 	for p in comp.customPages:
 		if p.name == name:
 			return p
+
+def changeParStyle(p, style, size=1, includeValueData=True):
+	"""
+	Change a parameter's style.
+	Args:
+		p: The parameter to change
+		style: The style string for the parameter (e.g. 'Int', 'Float' 'Menu'
+				etc.)
+		size: For multivalue pars (e.g. 'Int', 'Float') the number of values 1-4
+		includeValueData: If True, include all val, expr, bind settings)
+
+	Returns:
+		A list of newly created parameters.
+	"""
+	pSon = TDJ.parameterToJSONPar(p.tuplet[0],
+							extraAttrs='*' if includeValueData else ['order'])
+	name = p.tupletName
+	p.destroy()
+	pSon['name'] = name
+	pSon['style'] = style
+	pSon['size'] = size
+	pars = TDJ.addParameterFromJSONDict(p.owner, pSon,
+										   replace=True, setValues=True,
+										   ignoreAttrErrors=True)
+	return pars
