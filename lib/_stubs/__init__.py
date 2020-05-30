@@ -1079,7 +1079,7 @@ _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT, '_AnyCompT']
 baseCOMP = COMP
 panelCOMP = PanelCOMP
 evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
-parameterCHOP = nullCHOP = selectCHOP = CHOP
+parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
 animationCOMP = COMP
 inTOP = outTOP = TOP
 

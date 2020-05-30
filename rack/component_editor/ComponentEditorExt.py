@@ -68,6 +68,25 @@ class ComponentEditor:
 			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
 		pane.owner = comp
 
+	@staticmethod
+	def FindVideoOutput():
+		comp = iop.hostedComp
+		o = comp.op('video_out') or comp.op('out1')
+		if o and o.isTOP:
+			return o
+		for o in comp.findChildren(type=outTOP, depth=1):
+			return o
+
+	@staticmethod
+	def FindAudioOutput():
+		comp = iop.hostedComp
+		for name in ['audio_out', 'out1', 'out2']:
+			o = comp.op(name)
+			if o and o.isCHOP:
+				return o
+		for o in comp.findChildren(type=outCHOP, depth=1):
+			return o
+
 	def Savecomponent(self, par):
 		self.SaveComponent()
 
@@ -86,11 +105,3 @@ def _GetPaneByName(name):
 	for pane in ui.panes:
 		if pane.name == name:
 			return pane
-
-def FindVideoOutput():
-	comp = iop.hostedComp
-	o = comp.op('video_out') or comp.op('out1')
-	if o and o.isTOP:
-		return o
-	for o in comp.findChildren(type=outTOP, depth=1):
-		return o
