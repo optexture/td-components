@@ -3,7 +3,12 @@ import os
 import pathlib
 import shutil
 
-from common import ExtensionBase, loggedmethod
+from common import ExtensionBase, loggedmethod, formatValue, parseValue
+
+# noinspection PyUnreachableCode
+if False:
+	# noinspection PyUnresolvedReferences
+	from _stubs import *
 
 _inputResMultipliers = {
 	'quarter': 0.25,
@@ -188,6 +193,22 @@ class Recorder(ExtensionBase):
 			height = maxheight
 		self.ownerComp.par.h = height
 
+	def GetSettingsDict(self):
+		pars = []
+		for page in self.ownerComp.customPages:
+			if page.name in ['Output', 'Format', 'Advanced']:
+				pars += page.pars
+		return {
+			par.name: formatValue(par.eval())
+			for par in pars
+		}
+
+	def SetSettingsDict(self, settings: dict):
+		for key, val in settings.items():
+			par = self.ownerComp.par[key]
+			if par is not None:
+				par.val = parseValue(val)
+
 def _panelsHeight(panels):
 	return sum([
 		c.height
@@ -208,30 +229,3 @@ def _formatBytes(bytes_num):
 
 	return str(round(dblbyte, 2)) + " " + _sizes[i]
 
-
-# stubs
-
-if False:
-	class _Dummy:
-		pass
-
-	class Dependency:
-		def __init__(self, _=None):
-			self.val = None
-
-		def modified(self): pass
-
-	tdu = _Dummy()
-	tdu.Dependency = Dependency
-	project = _Dummy()
-	project.name = ''
-	project.folder = ''
-	ui = _Dummy()
-	ui.status = ''
-	mod = _Dummy()
-	mod.tdu = _Dummy()
-	mod.tdu.expandPath = lambda _: _
-
-	def op(_): pass
-
-	def ops(*_): return []

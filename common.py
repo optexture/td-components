@@ -7,8 +7,10 @@ import sys
 
 # print('common.py loading...')
 
+# noinspection PyUnreachableCode
 if False:
-	from common.lib._stubs import *
+	# noinspection PyUnresolvedReferences
+	from _stubs import *
 
 
 _TimestampFormat = '[%H:%M:%S]'
@@ -101,7 +103,7 @@ class LoggableBase:
 
 class ExtensionBase(LoggableBase):
 	def __init__(self, ownerComp):
-		self.ownerComp = ownerComp  # type: op
+		self.ownerComp = ownerComp  # type: COMP
 		self.enablelogging = True
 		self.par = ownerComp.par
 		self.path = ownerComp.path
