@@ -12,27 +12,24 @@ if False:
 class Workspace:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp
+		self.state = iop.workspaceState
 		self.statePar = ipar.workspaceState
 
-	def LoadWorkspace(self, file: str):
+	def PromptLoadWorkspaceFile(self):
+		path = ui.chooseFile(load=True, fileTypes=['json'], title='Open Workspace File')
+		if path:
+			self.LoadWorkspaceFile(path)
+
+	def PromptLoadWorkspaceFolder(self):
+		path = ui.chooseFolder(title='Open Workspace Folder')
+		if path:
+			self.LoadWorkspaceFolder(path)
+
+	def LoadWorkspaceFile(self, file: str):
 		filePath = Path(file)
-		if not filePath.exists():
-			# TODO: handle missing file by creating a new one
-			if filePath.name.endswith('.json'):
-				folderPath = filePath.parent
-				settingsPath = filePath
-			elif filePath.suffix:
-				raise Exception(f'Unsupported workspace file type: {file}')
-			else:
-				folderPath = filePath
-				settingsPath = filePath / 'workspace.json'
-		elif filePath.is_dir():
-			folderPath = filePath
-			settingsPath = filePath / 'workspace.json'
-		else:
-			settingsPath = filePath
-			folderPath = settingsPath.parent
-		pass
+		self._LoadWorkspace(
+			filePath,
+			filePath.parent)
 
 	def LoadWorkspaceFolder(self, path: str):
 		folderPath = Path(path)
@@ -42,56 +39,35 @@ class Workspace:
 
 	def _LoadWorkspace(self, settingsPath: Path, folderPath: Path):
 		self.statePar.Rootfolder = folderPath
-		self.statePar.Settingsfile = settingsPath
-		
-		pass
+		self.ownerComp.par.Settingsfile = settingsPath
+		if settingsPath.exists():
+			jsonDat = self.ownerComp.op('settings_json')
+			jsonDat.par.loadonstartpulse.pulse()
+			settings = json.loads(jsonDat.text or '{}')
+		else:
+			settings = {}
+		folderPath.mkdir(parents=True, exist_ok=True)
+		self.statePar.Settings = settings
+		self.statePar.Name = settings.get('Name') or folderPath.name
 
-	def SaveSettings(self, saveAs=None):
-		pass
+	def _BuildSettings(self):
+		settings = self.statePar.Settings.eval() or {}
+		for par in self.state.pars('Name'):
+			if par.eval() in (None, ''):
+				continue
+			settings[par.name] = par.eval()
+		return settings
 
-	def _GetSettings(self):
-		return {
-			par.name: par.eval()
-			for par in self.ownerComp.pars('Name')
-		}
-
-	def GetSettingsJson(self):
-		settings = self._GetSettings()
-		return json.dumps(settings, indent='  ')
-
-	def SetSettings(self, settings: dict):
-		settings = settings or {}
-
-		pass
-
-def _tableToDict(dat: 'DAT'):
-	return {
-		name.val: _parseValue(value.val)
-		for name, value in dat.rows()
-	}
-
-
-NULL_PLACEHOLDER = ''
-
-def _parseValue(val, nonevalue=NULL_PLACEHOLDER):
-	if val is None or val == nonevalue:
-		return None
-	if val == '' or isinstance(val, (int, float)):
-		return val
-	try:
-		# noinspection PyTypeChecker
-		parsed = float(val)
-		if int(parsed) == parsed:
-			return int(parsed)
-		return parsed
-	except ValueError:
-		return val
-
-def _formatValue(val, nonevalue=NULL_PLACEHOLDER):
-	if isinstance(val, str):
-		return val
-	if val is None:
-		return nonevalue
-	if isinstance(val, float) and int(val) == val:
-		return str(int(val))
-	return str(val)
+	def SaveSettings(self):
+		if not self.statePar.Rootfolder or not self.ownerComp.par.Settingsfile:
+			raise Exception('No workspace selected')
+		folderPath = Path(self.statePar.Rootfolder.eval())
+		settings = self.statePar.Settings.eval() or {}
+		for par in self.state.pars('Name'):
+			if par.eval() in (None, ''):
+				continue
+			settings[par.name] = par.eval()
+		folderPath.mkdir(parents=True, exist_ok=True)
+		jsonDat = self.ownerComp.op('settings_json')
+		jsonDat.text = json.dumps(settings, indent='  ')
+		jsonDat.par.writepulse.pulse()
