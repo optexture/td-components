@@ -9,3 +9,9 @@ if False:
 class Editor:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp
+
+	def LoadComponent(self):
+		pass
+
+	def SaveComponent(self, saveAs=None):
+		pass
