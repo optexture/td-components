@@ -431,7 +431,7 @@ class OP:
 	def changeType(self, optype: _T.Type) -> '_AnyOpT': pass
 	def copyParameters(self, o: '_AnyOpT', custom=True, builtin=True): pass
 	def cook(self, force=False, recurse=False): pass
-	def pars(self, pattern) -> _T.List['Par']: pass
+	def pars(self, *pattern: str) -> _T.List['Par']: pass
 
 	def openParameters(self): pass
 	def openViewer(self, unique=False, borders=True): pass
