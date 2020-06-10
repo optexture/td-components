@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import List
 
 # noinspection PyUnreachableCode
 if False:
@@ -50,12 +51,51 @@ class Workspace:
 		self.statePar.Settings = settings
 		self.statePar.Name = settings.get('Name') or folderPath.name
 		self.statePar.Subcomptags = settings.get('Subcomptags') or ''
+		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
+		if opTable:
+			for i in range(1, opTable.numRows):
+				opName = opTable[i, 'name'].val
+				self._ApplySettingsToOp(
+					opName,
+					settings.get(opName) or {},
+					(opTable[i, 'params'].val or '').split(' '),
+					(opTable[i, 'paramPages'].val or '').split(' '))
+
+	@staticmethod
+	def _ApplySettingsToOp(
+			opName: str,
+			settings: dict,
+			paramNames: List[str],
+			paramPages: List[str]):
+		pars = _getOpParams(opName, paramNames, paramPages)
+		for par in pars:
+			if par.name in settings:
+				par.val = settings[par.name]
+			else:
+				par.val = par.default
 
 	def _BuildSettings(self):
 		settings = self.statePar.Settings.eval() or {}
 		for par in self.state.pars('Name', 'Subcomptags'):
-			if par.eval() in (None, ''):
-				continue
+			settings[par.name] = par.eval()
+		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
+		if opTable:
+			for i in range(1, opTable.numRows):
+				opName = opTable[i, 'name'].val
+				opSettings = self._BuildSettingsForOp(
+					opName,
+					(opTable[i, 'params'].val or '').split(' '),
+					(opTable[i, 'paramPages'].val or '').split(' '))
+				settings[opName] = opSettings
+		return settings
+
+	@staticmethod
+	def _BuildSettingsForOp(
+			opName: str,
+			paramNames: List[str],
+			paramPages: List[str]):
+		settings = {}
+		for par in _getOpParams(opName, paramNames, paramPages):
 			settings[par.name] = par.eval()
 		return settings
 
@@ -71,3 +111,15 @@ class Workspace:
 		jsonDat.text = settingsJson
 		jsonDat.par.writepulse.pulse()
 		print(f'Saved workspace settings to {jsonDat.par.file}')
+
+def _getOpParams(opName: str, paramNames: List[str], paramPages: List[str]):
+	o = getattr(iop, opName, None)  # type: OP
+	if not o:
+		return []
+	pars = []
+	for par in o.pars(*paramNames):
+		pars.append(par)
+	for page in o.customPages:
+		if page.name in paramPages:
+			pars += page.pars
+	return pars
