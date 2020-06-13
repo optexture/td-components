@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # noinspection PyUnreachableCode
 if False:
@@ -48,26 +48,31 @@ class Workspace:
 		else:
 			settings = {}
 		folderPath.mkdir(parents=True, exist_ok=True)
-		self.statePar.Settings = settings
-		self.statePar.Name = settings.get('Name') or folderPath.name
-		self.statePar.Subcomptags = settings.get('Subcomptags') or ''
+		self._ApplySettingsToOp(
+			self.ownerComp,
+			settings.get('workspace') or {},
+			paramNames=[],
+			paramPages=['Settings'],
+		)
 		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
 		if opTable:
 			for i in range(1, opTable.numRows):
 				opName = opTable[i, 'name'].val
 				self._ApplySettingsToOp(
-					opName,
+					getattr(iop, opName, None),
 					settings.get(opName) or {},
 					(opTable[i, 'params'].val or '').split(' '),
 					(opTable[i, 'paramPages'].val or '').split(' '))
+		self.ownerComp.par.Name = self.ownerComp.par.Name or folderPath.name
+		self.ownerComp.par.Settings = settings
 
-	@staticmethod
 	def _ApplySettingsToOp(
-			opName: str,
+			self,
+			o: Optional[OP],
 			settings: dict,
 			paramNames: List[str],
 			paramPages: List[str]):
-		pars = _getOpParams(opName, paramNames, paramPages)
+		pars = _getOpParams(o, paramNames, paramPages)
 		for par in pars:
 			if par.name in settings:
 				par.val = settings[par.name]
@@ -75,15 +80,18 @@ class Workspace:
 				par.val = par.default
 
 	def _BuildSettings(self):
-		settings = self.statePar.Settings.eval() or {}
-		for par in self.state.pars('Name', 'Subcomptags'):
-			settings[par.name] = par.eval()
+		settings = self.ownerComp.par.Settings.eval() or {}
+		settings['workspace'] = self._BuildSettingsForOp(
+			self.ownerComp,
+			paramNames=[],
+			paramPages=['Settings'],
+		)
 		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
 		if opTable:
 			for i in range(1, opTable.numRows):
 				opName = opTable[i, 'name'].val
 				opSettings = self._BuildSettingsForOp(
-					opName,
+					getattr(iop, opName, None),
 					(opTable[i, 'params'].val or '').split(' '),
 					(opTable[i, 'paramPages'].val or '').split(' '))
 				settings[opName] = opSettings
@@ -91,11 +99,11 @@ class Workspace:
 
 	@staticmethod
 	def _BuildSettingsForOp(
-			opName: str,
+			o: Optional[OP],
 			paramNames: List[str],
 			paramPages: List[str]):
 		settings = {}
-		for par in _getOpParams(opName, paramNames, paramPages):
+		for par in _getOpParams(o, paramNames, paramPages):
 			settings[par.name] = par.eval()
 		return settings
 
@@ -104,7 +112,7 @@ class Workspace:
 			raise Exception('No workspace selected')
 		folderPath = Path(self.statePar.Rootfolder.eval())
 		settings = self._BuildSettings()
-		self.statePar.Settings = settings
+		self.ownerComp.par.Settings = settings
 		settingsJson = json.dumps(settings, indent='  ')
 		folderPath.mkdir(parents=True, exist_ok=True)
 		jsonDat = self.ownerComp.op('settings_json')
@@ -112,14 +120,18 @@ class Workspace:
 		jsonDat.par.writepulse.pulse()
 		print(f'Saved workspace settings to {jsonDat.par.file}')
 
-def _getOpParams(opName: str, paramNames: List[str], paramPages: List[str]):
-	o = getattr(iop, opName, None)  # type: OP
+def _getOpParams(o: Optional[OP], paramNames: List[str], paramPages: List[str]):
 	if not o:
 		return []
 	pars = []
-	for par in o.pars(*paramNames):
-		pars.append(par)
-	for page in o.customPages:
-		if page.name in paramPages:
-			pars += page.pars
+	if paramNames:
+		for par in o.pars(*paramNames):
+			if par.enable and not par.readOnly and not par.label.startswith('-'):
+				pars.append(par)
+	if paramPages:
+		for page in o.customPages:
+			if page.name in paramPages:
+				for par in page.pars:
+					if par.enable and not par.readOnly and not par.label.startswith('-'):
+						pars.append(par)
 	return pars
