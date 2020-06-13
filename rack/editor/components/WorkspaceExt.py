@@ -66,8 +66,8 @@ class Workspace:
 		self.ownerComp.par.Name = self.ownerComp.par.Name or folderPath.name
 		self.ownerComp.par.Settings = settings
 
+	@staticmethod
 	def _ApplySettingsToOp(
-			self,
 			o: Optional[OP],
 			settings: dict,
 			paramNames: List[str],
