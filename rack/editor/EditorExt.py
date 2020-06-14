@@ -1,10 +1,10 @@
 from pathlib import Path
+from typing import Any, Callable
 
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
-	from typing import Any
 	from _stubs.PopDialogExt import PopDialogExt
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
@@ -97,6 +97,18 @@ class Editor:
 			ok=_onOk,
 		)
 
+	@staticmethod
+	def ShowNetwork(useActive=True):
+		comp = iop.hostedComp
+		pane = None
+		if useActive:
+			pane = _GetActiveEditor()
+		if not pane:
+			pane = _GetPaneByName('compeditor')
+		if not pane:
+			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
+		pane.owner = comp
+
 def _ShowPromptDialog(
 		title=None,
 		text=None,
@@ -124,3 +136,16 @@ def _ShowPromptDialog(
 		buttons=[oktext, canceltext],
 		enterButton=1, escButton=2, escOnClickAway=True,
 		callback=_callback)
+
+def _GetActiveEditor():
+	pane = ui.panes.current
+	if pane.type == PaneType.NETWORKEDITOR:
+		return pane
+	for pane in ui.panes:
+		if pane.type == PaneType.NETWORKEDITOR:
+			return pane
+
+def _GetPaneByName(name):
+	for pane in ui.panes:
+		if pane.name == name:
+			return pane
