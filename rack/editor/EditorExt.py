@@ -18,6 +18,7 @@ class Editor:
 	def LoadComponent(self, tox: str, thumb: str = None):
 		comp = iop.hostedComp
 		if not tox:
+			ipar.editorState.Hascomponent = False
 			ipar.editorState.Thumbfile = ''
 			ipar.editorState.Toxfile = ''
 			comp.par.externaltox = ''
@@ -36,6 +37,7 @@ class Editor:
 			ipar.editorState.Toxfile = tox
 			comp.par.externaltox = tox
 			comp.par.reiinitnet.pulse()
+			ipar.editorState.Hascomponent = True
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
 		comp = iop.hostedComp
