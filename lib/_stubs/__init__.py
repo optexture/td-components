@@ -1071,7 +1071,12 @@ class scriptSOP(SOP):
 	def appendBezier(self, numVertices: int, closed=True, order=4, addPoints=True) -> Bezier: pass
 	def appendMesh(self, numROws: int, numCols: int, closedU=False, closedV=False, addPoints=True) -> Mesh: pass
 
-class TOP(OP): pass
+class TOP(OP):
+	width: int
+	height: int
+
+	def save(self, path): pass
+
 class MAT(OP): pass
 
 _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT, '_AnyCompT']
