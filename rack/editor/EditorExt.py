@@ -9,6 +9,7 @@ if False:
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
 	ipar.workspace = Any()
+	ipar.compPicker = Any()
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -62,7 +63,7 @@ class Editor:
 				ipar.editorState.Thumbfile = thumb
 			thumbSource.save(thumb)
 
-	def PromptSaveAs(self):
+	def PromptComponentSaveAs(self):
 		def _onOk(newName=None):
 			if not newName:
 				return
@@ -76,15 +77,16 @@ class Editor:
 			else:
 				tox = rootFolder / f'{newName}.tox'
 			expandedPath = Path(tdu.expandPath(tox))
-			if not expandedPath.exists():
-				self.SaveComponent(tox)
-			else:
+			if expandedPath.exists():
 				result = ui.messageBox(
 					'Overwrite file?',
 					f'File already exists: {expandedPath}?\nAre you sure you want to overwrite it?',
 					buttons=['Ok', 'Cancel'])
-				if result == 0:
-					self.SaveComponent(tox)
+				if result != 0:
+					return
+			self.SaveComponent(tox)
+			if not ipar.compPicker.Refresh:
+				ipar.compPicker.Refreshpulse.pulse()
 
 		currentTox = ipar.editorState.Toxfile.eval()
 		currentName = Path(currentTox).stem if currentTox else ''
@@ -108,6 +110,25 @@ class Editor:
 		if not pane:
 			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
 		pane.owner = comp
+
+	@staticmethod
+	def FindVideoOutput():
+		comp = iop.hostedComp
+		o = comp.op('video_out') or comp.op('out1')
+		if o and o.isTOP:
+			return o
+		for o in comp.findChildren(type=outTOP, depth=1):
+			return o
+
+	@staticmethod
+	def FindAudioOutput():
+		comp = iop.hostedComp
+		for name in ['audio_out', 'out1', 'out2']:
+			o = comp.op(name)
+			if o and o.isCHOP:
+				return o
+		for o in comp.findChildren(type=outCHOP, depth=1):
+			return o
 
 def _ShowPromptDialog(
 		title=None,
