@@ -57,6 +57,7 @@ class ComponentPicker:
 		rowData = info.get('rowData') or {}
 		rowObject = rowData.get('rowObject') or {}
 		self.ownerComp.par.Selectedcomp = rowObject.get('relpath') or ''
+		self.ownerComp.par.Onitemclick.pulse()
 
 	def OnListRollover(self, info: dict):
 		self.statePar.Hoverrow = info.get('row', -1)

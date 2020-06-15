@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,12 +16,20 @@ class Editor:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp
 
+	def OnPickerItemSelect(self, compInfo: DAT):
+		tox = compInfo[1, 'tox'].val
+		thumb = compInfo[1, 'thumb'].val
+		self.LoadComponent(tox, thumb)
+
 	def LoadComponent(self, tox: str, thumb: str = None):
 		comp = iop.hostedComp
 		if not tox:
 			ipar.editorState.Hascomponent = False
 			ipar.editorState.Thumbfile = ''
 			ipar.editorState.Toxfile = ''
+			ipar.editorState.Name = ''
+			ipar.editorState.Modifieddate = ''
+			ipar.editorState.Hascomponentui = False
 			comp.par.externaltox = ''
 			comp.destroyCustomPars()
 			for child in list(comp.children):
@@ -36,8 +45,14 @@ class Editor:
 			ipar.editorState.Thumbfile = thumb or ''
 			ipar.editorState.Toxfile = tox
 			comp.par.externaltox = tox
-			comp.par.reiinitnet.pulse()
+			comp.par.reinitnet.pulse()
+			comp = iop.hostedComp  # in case the OP was replaced due to an OP type change
+			toxPath = Path(tox)
+			ipar.editorState.Name = toxPath.stem
+			modified = datetime.fromtimestamp(toxPath.stat().st_mtime)
+			ipar.editorState.Modifieddate = modified.strftime('%Y-%m-%d %H:%M')
 			ipar.editorState.Hascomponent = True
+			ipar.editorState.Hascomponentui = comp.isPanel
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
 		comp = iop.hostedComp
