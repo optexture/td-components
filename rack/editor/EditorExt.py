@@ -147,6 +147,11 @@ class Editor:
 		for o in comp.findChildren(type=outCHOP, depth=1):
 			return o
 
+	@staticmethod
+	def CustomizeComponent():
+		comp = iop.hostedComp
+		ui.openCOMPEditor(comp)
+
 def _ShowPromptDialog(
 		title=None,
 		text=None,
