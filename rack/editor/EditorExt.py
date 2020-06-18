@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional
 
 # noinspection PyUnreachableCode
 if False:
@@ -97,7 +97,7 @@ class Editor:
 			if not rootFolder:
 				raise Exception('No workspace root folder!')
 			layout = ipar.workspace.Folderlayout.eval()
-			if layout == 'subirs':
+			if layout == 'subdirs':
 				tox = rootFolder / newName / f'{newName}.tox'
 			# elif layout == 'flat':
 			else:
@@ -205,3 +205,32 @@ def _GetPaneByName(name):
 	for pane in ui.panes:
 		if pane.name == name:
 			return pane
+
+class LibraryLoader:
+	def __init__(self, ownerComp):
+		self.ownerComp = ownerComp  # type: COMP
+
+	def UnloadLibraries(self):
+		for o in self.ownerComp.children:
+			if not o.valid:
+				continue
+			try:
+				o.destroy()
+				pass
+			except:
+				pass
+
+	def LoadLibraries(self):
+		toxes = self.ownerComp.par.Libraries.eval() or []  # type: List[str]
+		if not toxes:
+			return
+		workspaceFolder = ipar.workspace.Rootfolder.eval()
+		workspacePath = Path(workspaceFolder) if workspaceFolder else None
+		for tox in toxes:
+			if workspacePath and (tox.startswith('/') or ':' in tox):
+				toxPath = Path(tox)
+			else:
+				toxPath = workspacePath.joinpath(tox)
+			if not toxPath.exists():
+				continue
+			self.ownerComp.loadTox(toxPath)
