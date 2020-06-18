@@ -161,6 +161,10 @@ class Editor:
 		comp = iop.hostedComp
 		ui.openCOMPEditor(comp)
 
+	def OnWorkspaceUnload(self):
+		self.UnloadComponent()
+		ipar.compPicker.Refreshpulse.pulse()
+
 def _ShowPromptDialog(
 		title=None,
 		text=None,

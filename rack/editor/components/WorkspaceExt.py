@@ -38,16 +38,18 @@ class Workspace:
 			folderPath / 'workspace.json',
 			folderPath)
 
-	def _LoadWorkspace(self, settingsPath: Path, folderPath: Path):
-		self.statePar.Rootfolder = folderPath
-		self.ownerComp.par.Settingsfile = settingsPath
-		if settingsPath.exists():
-			jsonDat = self.ownerComp.op('settings_json')
+	def _LoadWorkspace(self, settingsPath: Optional[Path], folderPath: Optional[Path]):
+		self.statePar.Rootfolder = folderPath or ''
+		self.ownerComp.par.Settingsfile = settingsPath or ''
+		jsonDat = self.ownerComp.op('settings_json')
+		if settingsPath is not None and settingsPath.exists():
 			jsonDat.par.loadonstartpulse.pulse()
 			settings = json.loads(jsonDat.text or '{}')
 		else:
+			jsonDat.text = ''
 			settings = {}
-		folderPath.mkdir(parents=True, exist_ok=True)
+		if folderPath is not None:
+			folderPath.mkdir(parents=True, exist_ok=True)
 		self._ApplySettingsToOp(
 			self.ownerComp,
 			settings.get('workspace') or {},
@@ -63,8 +65,12 @@ class Workspace:
 					settings.get(opName) or {},
 					(opTable[i, 'params'].val or '').split(' '),
 					(opTable[i, 'paramPages'].val or '').split(' '))
-		self.ownerComp.par.Name = self.ownerComp.par.Name or folderPath.name
+		self.ownerComp.par.Name = self.ownerComp.par.Name or (folderPath.name if folderPath is not None else '')
 		self.ownerComp.par.Settings = settings
+
+	def UnloadWorkspace(self):
+		self._LoadWorkspace(None, None)
+		self.ownerComp.Onworkspaceunload.pulse()
 
 	@staticmethod
 	def _ApplySettingsToOp(
