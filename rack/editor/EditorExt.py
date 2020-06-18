@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 # noinspection PyUnreachableCode
 if False:
@@ -17,11 +17,14 @@ class Editor:
 		self.ownerComp = ownerComp
 
 	def OnPickerItemSelect(self, compInfo: DAT):
-		tox = compInfo[1, 'tox'].val
-		thumb = compInfo[1, 'thumb'].val
-		self.LoadComponent(tox, thumb)
+		if compInfo.numRows < 2:
+			self.LoadComponent(None)
+		else:
+			tox = compInfo[1, 'tox'].val
+			thumb = compInfo[1, 'thumb'].val
+			self.LoadComponent(tox, thumb)
 
-	def LoadComponent(self, tox: str, thumb: str = None):
+	def LoadComponent(self, tox: Optional[str], thumb: Optional[str] = None):
 		comp = iop.hostedComp
 		if not tox:
 			ipar.editorState.Hascomponent = False
@@ -53,6 +56,8 @@ class Editor:
 			ipar.editorState.Modifieddate = modified.strftime('%Y-%m-%d %H:%M')
 			ipar.editorState.Hascomponent = True
 			ipar.editorState.Hascomponentui = comp.isPanel
+		# Ensure that the video and audio outputs are found and updated
+		iop.editorState.cook(force=True)
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
 		comp = iop.hostedComp
@@ -79,6 +84,10 @@ class Editor:
 				thumb = expandedPath.with_suffix('.png')
 				ipar.editorState.Thumbfile = thumb
 			thumbSource.save(thumb)
+
+	def UnloadComponent(self):
+		ipar.compPicker.Selectedcomp = ''
+		self.LoadComponent(None)
 
 	def PromptComponentSaveAs(self):
 		def _onOk(newName=None):
