@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, List, Optional
+from collections import namedtuple
 
 # noinspection PyUnreachableCode
 if False:
@@ -11,6 +12,7 @@ if False:
 	ipar.editorState = Any()
 	ipar.workspace = Any()
 	ipar.compPicker = Any()
+	iop.libraryLoader = None  # type: LibraryLoader
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -164,6 +166,11 @@ class Editor:
 	def OnWorkspaceUnload(self):
 		self.UnloadComponent()
 		ipar.compPicker.Refreshpulse.pulse()
+		iop.libraryLoader.UnloadLibraries()
+
+	def OnWorkspaceLoad(self):
+		self.OnWorkspaceUnload()
+		iop.libraryLoader.LoadLibraries()
 
 def _ShowPromptDialog(
 		title=None,
@@ -212,7 +219,7 @@ class LibraryLoader:
 
 	def UnloadLibraries(self):
 		for o in self.ownerComp.children:
-			if not o.valid:
+			if not o.valid or not o.isCOMP:
 				continue
 			try:
 				o.destroy()
@@ -220,17 +227,47 @@ class LibraryLoader:
 			except:
 				pass
 
-	def LoadLibraries(self):
+	# currently this is just for debugging purposes
+	def BuildLibraryTable(self, dat: 'DAT'):
+		dat.clear()
+		dat.appendRow(['shortcut', 'path', 'allPaths'])
+		libs = self._ParseLibraries()
+		if not libs:
+			return
+		dat.appendRows([list(lib) for lib in libs])
+
+	def _ParseLibraries(self):
 		toxes = self.ownerComp.par.Libraries.eval() or []  # type: List[str]
 		if not toxes:
-			return
+			return []
 		workspaceFolder = ipar.workspace.Rootfolder.eval()
 		workspacePath = Path(workspaceFolder) if workspaceFolder else None
+		libs = []
 		for tox in toxes:
-			if workspacePath and (tox.startswith('/') or ':' in tox):
-				toxPath = Path(tox)
+			if '@' in tox:
+				shortcut, tox = tox.split('@')
 			else:
-				toxPath = workspacePath.joinpath(tox)
-			if not toxPath.exists():
+				shortcut = ''
+			actualPath = None
+			for toxPath in tox.split('|'):
+				if workspacePath and ':' not in toxPath and not toxPath.startswith('/'):
+					effectivePath = workspacePath.joinpath(toxPath)
+				else:
+					effectivePath = Path(tdu.expandPath(toxPath))
+				if effectivePath.exists():
+					actualPath = effectivePath.resolve()
+					break
+			libs.append(_LibrarySpec(shortcut, str(actualPath or ''), tox))
+		return libs
+
+	def LoadLibraries(self):
+		libs = self._ParseLibraries()
+		for i, lib in enumerate(libs):
+			if not lib.path:
 				continue
-			self.ownerComp.loadTox(toxPath)
+			comp = self.ownerComp.loadTox(lib.path)
+			if lib.shortcut:
+				comp.par.opshortcut = lib.shortcut
+			comp.nodeY = 600 - (i * 150)
+
+_LibrarySpec = namedtuple('LibrarySpec', ['shortcut', 'path', 'allPaths'])

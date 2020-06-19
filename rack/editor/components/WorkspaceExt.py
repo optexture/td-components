@@ -67,10 +67,11 @@ class Workspace:
 					(opTable[i, 'paramPages'].val or '').split(' '))
 		self.ownerComp.par.Name = self.ownerComp.par.Name or (folderPath.name if folderPath is not None else '')
 		self.ownerComp.par.Settings = settings
+		self.ownerComp.par.Onworkspaceload.pulse()
 
 	def UnloadWorkspace(self):
 		self._LoadWorkspace(None, None)
-		self.ownerComp.Onworkspaceunload.pulse()
+		self.ownerComp.par.Onworkspaceunload.pulse()
 
 	@staticmethod
 	def _ApplySettingsToOp(
