@@ -266,6 +266,7 @@ class LibraryLoader:
 			if not lib.path:
 				continue
 			comp = self.ownerComp.loadTox(lib.path)
+			comp.par.externaltox = lib.path
 			if lib.shortcut:
 				comp.par.opshortcut = lib.shortcut
 			comp.nodeY = 600 - (i * 150)
