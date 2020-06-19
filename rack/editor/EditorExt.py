@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Optional
-from collections import namedtuple
+from typing import Any, Callable, Dict, List, Optional
+from dataclasses import dataclass
+import dataclasses
 
 # noinspection PyUnreachableCode
 if False:
@@ -271,4 +272,20 @@ class LibraryLoader:
 				comp.par.opshortcut = lib.shortcut
 			comp.nodeY = 600 - (i * 150)
 
-_LibrarySpec = namedtuple('LibrarySpec', ['shortcut', 'path', 'allPaths'])
+@dataclass
+class _LibrarySpec:
+	shortcut: str
+	path: str
+	allPaths: str
+
+@dataclass
+class _ComponentSpec:
+	tox: Optional[str] = None
+	pars: Optional[Dict[str, Any]] = None
+
+	@classmethod
+	def fromDict(cls, d: dict):
+		return cls(**d)
+
+	def toDict(self):
+		return dataclasses.asdict(self)
