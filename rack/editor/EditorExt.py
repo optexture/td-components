@@ -173,6 +173,13 @@ class Editor:
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
 
+	def OnMenuTrigger(
+			self,
+			widget: 'COMP' = None, item: str = None, index: int = -1, indexPath: List[int] = None,
+			define: 'DAT' = None, menu: 'COMP' = None, **kwargs):
+		print(self.ownerComp, 'OnMenuTrigger', locals())
+		pass
+
 def _ShowPromptDialog(
 		title=None,
 		text=None,

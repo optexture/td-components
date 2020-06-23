@@ -1,0 +1,12 @@
+button	item1	item2	callback	dividerAfter	disable	checked	highlight	shortcut	rowCallback
+Workspace									
+	Open Workspace File		onItemTrigger						
+	Open Workspace Folder		onItemTrigger						
+	Save Workspace		onItemTrigger		not ipar.workspace.Rootfolder				
+	Close Workspace		onItemTrigger		not ipar.workspace.Rootfolder				
+	Recent			True					
+									getRecentFiles
+		Clear Recent File List							
+	Quit		onQuit				True		
+Edit					True				
+Settings									
