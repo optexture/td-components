@@ -53,6 +53,11 @@ def getRecentFiles(info):
 		{'item2': 'File three', 'dividerAfter': True}
 	]
 
+def getMenuItems(info):
+	items = ext.editor.GetMenuItems(**info)
+	# print(f'getMenuItems -> {items}')
+	return items
+
 # end examples
 ####################################
 
@@ -65,7 +70,8 @@ def onSelect(info):
 	"""
 	User selects a menu option
 	"""
-	debug(info)
+	# debug(info)
+	pass
 
 def onRollover(info):
 	"""

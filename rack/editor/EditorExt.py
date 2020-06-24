@@ -13,7 +13,8 @@ if False:
 	ipar.editorState = Any()
 	ipar.workspace = Any()
 	ipar.compPicker = Any()
-	iop.libraryLoader = None  # type: LibraryLoader
+	ipar.editorUIState = Any()
+	iop.libraryLoader = LibraryLoader(None)
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -61,6 +62,8 @@ class Editor:
 			ipar.editorState.Hascomponentui = comp.isPanel
 		# Ensure that the video and audio outputs are found and updated
 		iop.editorState.cook(force=True)
+		self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
+		self.ownerComp.op('sel_selected_body_panel_tab').cook(force=True)
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
 		comp = iop.hostedComp
@@ -173,12 +176,39 @@ class Editor:
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
 
-	def OnMenuTrigger(
-			self,
-			widget: 'COMP' = None, item: str = None, index: int = -1, indexPath: List[int] = None,
-			define: 'DAT' = None, menu: 'COMP' = None, **kwargs):
+	def OnMenuTrigger(self, define: dict=None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())
-		pass
+		if not define:
+			return
+		if 'statePar' in define and 'itemValue' in define:
+			par = getattr(ipar.editorUIState, define['statePar'], None)
+			print(self.ownerComp, '.... state par: ', par.name)
+			if par is not None:
+				par.val = define['itemValue']
+
+	def GetMenuItems(self, rowDict: dict, **kwargs):
+		print(self.ownerComp, 'GetMenuItems', rowDict)
+		statePar = None  # type: Optional[Par]
+		if rowDict.get('statePar', None):
+			statePar = getattr(ipar.editorUIState, rowDict['statePar'])
+		if statePar is not None:
+			if statePar.isMenu:
+				optionCount = len(statePar.menuNames)
+				depth = rowDict.get('itemDepth', '')
+				if depth == '':
+					depth = 1
+				return [
+					{
+						f'item{depth}': label,
+						'checked': f'ipar.editorUIState.{statePar.name} == "{name}"',
+						'statePar': statePar.name,
+						'itemValue': name,
+						'callback': 'onItemTrigger',
+						'dividerAfter': str(i < (optionCount - 1)),
+					}
+					for i, (name, label) in enumerate(zip(statePar.menuNames, statePar.menuLabels))
+				]
+		return []
 
 def _ShowPromptDialog(
 		title=None,
