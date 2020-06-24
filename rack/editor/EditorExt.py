@@ -186,11 +186,15 @@ class Editor:
 		print(self.ownerComp, 'OnMenuTrigger', locals())
 		if not define:
 			return
-		if 'statePar' in define and 'itemValue' in define:
+		if 'statePar' in define:
 			par = getattr(ipar.editorUIState, define['statePar'], None)
 			if par is not None:
-				par.val = define['itemValue']
-				return
+				if 'itemValue' in define:
+					par.val = define['itemValue']
+					return
+				if par.isToggle:
+					par.val = not par
+					return
 		actionOpName = define.get('actionOp', None)
 		actionOp = getattr(iop, actionOpName, None) if actionOpName else self
 		if actionOp is not None:
@@ -205,14 +209,15 @@ class Editor:
 		if rowDict.get('statePar', None):
 			statePar = getattr(ipar.editorUIState, rowDict['statePar'])
 		if statePar is not None:
+			depth = rowDict.get('itemDepth', '')
+			if depth == '':
+				depth = 1
+			nameKey = f'item{depth}'
 			if statePar.isMenu:
 				optionCount = len(statePar.menuNames)
-				depth = rowDict.get('itemDepth', '')
-				if depth == '':
-					depth = 1
 				return [
 					{
-						f'item{depth}': label,
+						nameKey: label,
 						'checked': f'ipar.editorUIState.{statePar.name} == "{name}"',
 						'statePar': statePar.name,
 						'itemValue': name,
@@ -221,6 +226,13 @@ class Editor:
 					}
 					for i, (name, label) in enumerate(zip(statePar.menuNames, statePar.menuLabels))
 				]
+			elif statePar.isToggle:
+				return {
+					nameKey: statePar.label,
+					'checked': f'ipar.editorUIState.{statePar.name}',
+					'callback': 'onItemTrigger',
+				}
+				pass
 		return []
 
 def _ShowPromptDialog(
