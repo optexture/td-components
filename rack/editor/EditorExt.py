@@ -132,7 +132,7 @@ class Editor:
 		)
 
 	@staticmethod
-	def ShowNetwork(useActive=True):
+	def _ShowNetwork(useActive=True):
 		comp = iop.hostedComp
 		pane = None
 		if useActive:
@@ -142,6 +142,12 @@ class Editor:
 		if not pane:
 			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
 		pane.owner = comp
+
+	def ShowNetwork(self):
+		self._ShowNetwork(useActive=True)
+
+	def ShowNetworkPopup(self):
+		self._ShowNetwork(useActive=False)
 
 	@staticmethod
 	def FindVideoOutput():
@@ -176,15 +182,22 @@ class Editor:
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
 
-	def OnMenuTrigger(self, define: dict=None, **kwargs):
+	def OnMenuTrigger(self, define: dict = None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())
 		if not define:
 			return
 		if 'statePar' in define and 'itemValue' in define:
 			par = getattr(ipar.editorUIState, define['statePar'], None)
-			print(self.ownerComp, '.... state par: ', par.name)
 			if par is not None:
 				par.val = define['itemValue']
+				return
+		actionOpName = define.get('actionOp', None)
+		actionOp = getattr(iop, actionOpName, None) if actionOpName else self
+		if actionOp is not None:
+			method = define.get('actionMethod', None)
+			if method and hasattr(actionOp, method):
+				getattr(actionOp, method)()
+				return
 
 	def GetMenuItems(self, rowDict: dict, **kwargs):
 		print(self.ownerComp, 'GetMenuItems', rowDict)
@@ -204,7 +217,7 @@ class Editor:
 						'statePar': statePar.name,
 						'itemValue': name,
 						'callback': 'onItemTrigger',
-						'dividerAfter': str(i < (optionCount - 1)),
+						'dividerAfter': i == (optionCount - 1),
 					}
 					for i, (name, label) in enumerate(zip(statePar.menuNames, statePar.menuLabels))
 				]

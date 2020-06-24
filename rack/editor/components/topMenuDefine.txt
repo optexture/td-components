@@ -1,15 +1,20 @@
-button	item1	item2	callback	dividerAfter	disable	checked	highlight	shortcut	rowCallback	statePar	itemValue	itemDepth
-Workspace												
-	Open Workspace File		onItemTrigger									
-	Open Workspace Folder		onItemTrigger									
-	Save Workspace		onItemTrigger		not ipar.workspace.Rootfolder							
-	Close Workspace		onItemTrigger		not ipar.workspace.Rootfolder							
-	Recent			True								
-									getRecentFiles			
-		Clear Recent File List										
-	Quit		onQuit				True					
-Edit					True							
-View												
-									getMenuItems	Selectedview		1
-	Right Panel											
-									getMenuItems	Selectedrightpanel		2
+button	item1	item2	callback	dividerAfter	disable	checked	highlight	shortcut	rowCallback	actionOp	actionMethod	statePar	itemValue	itemDepth
+Workspace														
+	Open Workspace File		onItemTrigger							workspace	PromptLoadWorkspaceFile			
+	Open Workspace Folder		onItemTrigger							workspace	PromptLoadWorkspaceFolder			
+	Save Workspace		onItemTrigger		not ipar.workspace.Rootfolder					workspace	SaveSettings			
+	Close Workspace		onItemTrigger		not ipar.workspace.Rootfolder					workspace	UnloadWorkspace			
+	Recent			True										
+									getRecentFiles					
+		Clear Recent File List												
+	Quit													
+Component														
+	Save		onItemTrigger		not ipar.editorState.Hascomponent						SaveComponent			
+	Save As		onItemTrigger		not ipar.editorState.Hascomponent						PromptComponentSaveAs			
+	Close		onItemTrigger	True	not ipar.editorState.Hascomponent						UnloadComponent			
+	Show Component Network		onItemTrigger		not ipar.editorState.Hascomponent						ShowNetwork			
+	Show Component Network (Popup)		onItemTrigger		not ipar.editorState.Hascomponent						ShowNetworkPopup			
+View														
+									getMenuItems			Selectedview		1
+	Right Panel													
+									getMenuItems			Selectedrightpanel		2
