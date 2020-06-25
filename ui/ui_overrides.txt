@@ -231,7 +231,7 @@ topMenu	*	Menubordercolorr	0.9
 topMenu	*	Menubordercolorg	0.9
 topMenu	*	Menubordercolorb	0.9
 topMenu	*	Menubordercolora	1.0
-topMenu	*	Menudividercolorr	0.199216
-topMenu	*	Menudividercolorg	0.346667
-topMenu	*	Menudividercolorb	0.4
+topMenu	*	Menudividercolorr	0.9
+topMenu	*	Menudividercolorg	0.9
+topMenu	*	Menudividercolorb	0.9
 topMenu	*	Menudividercolora	1.0
