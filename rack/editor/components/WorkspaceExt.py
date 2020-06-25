@@ -133,12 +133,12 @@ def _getOpParams(o: Optional[OP], paramNames: List[str], paramPages: List[str]):
 	pars = []
 	if paramNames:
 		for par in o.pars(*paramNames):
-			if par.enable and not par.readOnly and not par.label.startswith('-'):
+			if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
 				pars.append(par)
 	if paramPages:
 		for page in o.customPages:
 			if page.name in paramPages:
 				for par in page.pars:
-					if par.enable and not par.readOnly and not par.label.startswith('-'):
+					if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
 						pars.append(par)
 	return pars
