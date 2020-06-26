@@ -9,12 +9,14 @@ if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
 	from _stubs.PopDialogExt import PopDialogExt
+	from .components.SettingsExt import UserSettings
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
 	ipar.workspace = Any()
 	ipar.compPicker = Any()
 	ipar.editorUIState = Any()
 	iop.libraryLoader = LibraryLoader(None)
+	iop.userSettings = UserSettings(None)
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -181,6 +183,7 @@ class Editor:
 	def OnWorkspaceLoad(self):
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
+		iop.userSettings.AddRecentWorkspace(ipar.workspace.Settingsfile.eval())
 
 	def OnMenuTrigger(self, define: dict = None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())

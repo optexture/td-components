@@ -1,24 +1,45 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
 
-class SettingsExtBase:
-	def loadSettingsFile(self, filePath: Path, opTable: 'DAT' = None):
+class SettingsExtBase(ABC):
+	@abstractmethod
+	def getSettingsOps(self) -> List['SettingsOp']:
+		pass
+
+	def loadSettingsFile(self, filePath: Path):
 		if filePath and filePath.exists():
-			with filePath.open() as f:
+			with filePath.open('r') as f:
 				text = f.read()
 				settings = json.loads(text or '{}')
 		else:
 			settings = {}
-		pass
+		self.applySettings(settings)
+
+	def saveSettingsFile(self, filePath: Path):
+		settings = self.buildSettings()
+		with filePath.open('w') as f:
+			json.dump(settings, f, indent='  ')
+		return settings
+
+	def applySettings(self, settings: dict):
+		settingsOps = self.getSettingsOps()
+		for settingsOp in settingsOps:
+			settingsOp.applySettings(settings.get(settingsOp.name))
+
 	def buildSettings(self):
-		pass
+		settingsOps = self.getSettingsOps()
+		settings = {}
+		for settingsOp in settingsOps:
+			settings[settingsOp.name] = settingsOp.buildSettings()
+		return settings
 
 @dataclass
 class SettingsOp:
@@ -70,12 +91,29 @@ class SettingsOp:
 			else:
 				par.val = par.default
 
-class UserSettings:
+class UserSettings(SettingsExtBase):
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp  # type: COMP
 
+	def getSettingsOps(self) -> List['SettingsOp']:
+		return [SettingsOp('settings', pages=['Settings'])]
+
+	def getSettingsPath(self):
+		return Path(self.ownerComp.par.Usersettingsfile.eval())
+
 	def LoadSettings(self):
-		pass
+		self.loadSettingsFile(self.getSettingsPath())
 
 	def SaveSettings(self):
-		pass
+		self.loadSettingsFile(self.getSettingsPath())
+
+	def RecentWorkspaces(self):
+		return self.ownerComp.par.Recentworkspaces.eval() or []
+
+	def AddRecentWorkspace(self, workspaceSettingsFile: str):
+		workspaces = self.RecentWorkspaces()
+		if workspaceSettingsFile in workspaces:
+			workspaces.remove(workspaceSettingsFile)
+		workspaces.insert(0, workspaceSettingsFile)
+		self.ownerComp.par.Recentworkspaces.val = workspaces
+		self.SaveSettings()

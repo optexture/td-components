@@ -1,7 +1,6 @@
-import json
 from pathlib import Path
 from typing import List, Optional
-from .SettingsExt import SettingsOp
+from .SettingsExt import SettingsOp, SettingsExtBase
 
 # noinspection PyUnreachableCode
 if False:
@@ -11,9 +10,19 @@ if False:
 	iop.workspaceState = COMP()
 	ipar.workspaceState = Any()
 
-class Workspace:
+class Workspace(SettingsExtBase):
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp  # type: COMP
+
+	def getSettingsOps(self) -> List['SettingsOp']:
+		settingsOps = [
+			self.workspaceSettingsOp()
+		]
+		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
+		if opTable:
+			for i in range(1, opTable.numRows):
+				settingsOps.append(SettingsOp.fromDatRow(opTable, i))
+		return settingsOps
 
 	def PromptLoadWorkspaceFile(self):
 		path = ui.chooseFile(load=True, fileTypes=['json'], title='Open Workspace File')
@@ -43,48 +52,26 @@ class Workspace:
 	def _LoadWorkspace(self, settingsPath: Optional[Path], folderPath: Optional[Path]):
 		ipar.workspaceState.Rootfolder = folderPath or ''
 		self.ownerComp.par.Settingsfile = settingsPath or ''
-		jsonDat = self.ownerComp.op('settings_json')
-		if settingsPath is not None and settingsPath.exists():
-			jsonDat.par.loadonstartpulse.pulse()
-			settings = json.loads(jsonDat.text or '{}')
-		else:
-			jsonDat.text = ''
-			settings = {}
 		if folderPath is not None:
 			folderPath.mkdir(parents=True, exist_ok=True)
-		self.workspaceSettingsOp().applySettings(settings.get('workspace'))
-		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
-		if opTable:
-			for i in range(1, opTable.numRows):
-				opName = opTable[i, 'name'].val
-				SettingsOp.fromDatRow(opTable, i).applySettings(settings.get(opName))
+		self.loadSettingsFile(settingsPath)
 		self.ownerComp.par.Name = self.ownerComp.par.Name or (folderPath.name if folderPath is not None else '')
-		self.ownerComp.par.Settings = settings
 		self.ownerComp.par.Onworkspaceload.pulse()
+
+	def applySettings(self, settings: dict):
+		super().applySettings(settings)
+		self.ownerComp.par.Settings = settings
 
 	def UnloadWorkspace(self):
 		self._LoadWorkspace(None, None)
 		self.ownerComp.par.Onworkspaceunload.pulse()
 
-	def _BuildSettings(self):
-		settings = self.ownerComp.par.Settings.eval() or {}
-		settings['workspace'] = self.workspaceSettingsOp().buildSettings()
-		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
-		if opTable:
-			for i in range(1, opTable.numRows):
-				opName = opTable[i, 'name'].val
-				settings[opName] = SettingsOp.fromDatRow(opTable, i).buildSettings()
-		return settings
-
 	def SaveSettings(self):
 		if not ipar.workspaceState.Rootfolder or not self.ownerComp.par.Settingsfile:
 			raise Exception('No workspace selected')
 		folderPath = Path(ipar.workspaceState.Rootfolder.eval())
-		settings = self._BuildSettings()
-		self.ownerComp.par.Settings = settings
-		settingsJson = json.dumps(settings, indent='  ')
 		folderPath.mkdir(parents=True, exist_ok=True)
-		jsonDat = self.ownerComp.op('settings_json')
-		jsonDat.text = settingsJson
-		jsonDat.par.writepulse.pulse()
-		print(f'Saved workspace settings to {jsonDat.par.file}')
+		settingsPath = Path(self.ownerComp.par.Settingsfile.eval())
+		settings = self.saveSettingsFile(settingsPath)
+		self.ownerComp.par.Settings = settings
+		print(f'Saved workspace settings to {settingsPath}')
