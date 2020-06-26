@@ -104,13 +104,22 @@ class UserSettings(SettingsExtBase):
 	def LoadSettings(self):
 		self.loadSettingsFile(self.getSettingsPath())
 
+	def Loadsettings(self, par):
+		self.LoadSettings()
+
 	def SaveSettings(self):
 		self.loadSettingsFile(self.getSettingsPath())
 
+	def Savesettings(self, par):
+		self.SaveSettings()
+
 	def RecentWorkspaces(self) -> List[str]:
-		return self.ownerComp.par.Recentworkspaces.eval() or []
+		return [
+			path for path in self.ownerComp.par.Recentworkspaces.eval() or [] if path
+		]
 
 	def AddRecentWorkspace(self, workspaceSettingsFile: str):
+		workspaceSettingsFile = tdu.collapsePath(str(Path(workspaceSettingsFile).as_posix()))
 		workspaces = self.RecentWorkspaces()
 		if workspaceSettingsFile in workspaces:
 			workspaces.remove(workspaceSettingsFile)

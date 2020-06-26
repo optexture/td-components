@@ -198,13 +198,17 @@ class Editor:
 				if par.isToggle:
 					par.val = not par
 					return
-		actionOpName = define.get('actionOp', None)
+		actionOpName = define.get('actionOp')
 		actionOp = getattr(iop, actionOpName, None) if actionOpName else self
 		if actionOp is not None:
-			method = define.get('actionMethod', None)
+			method = define.get('actionMethod')
 			if method and hasattr(actionOp, method):
-				getattr(actionOp, method)()
-				return
+				func = getattr(actionOp, method)
+				itemValue = define.get('itemValue')
+				if itemValue in (None, ''):
+					func()
+				else:
+					func(itemValue)
 
 	def GetMenuItems(self, rowDict: dict, **kwargs):
 		print(self.ownerComp, 'GetMenuItems', rowDict)
@@ -213,7 +217,7 @@ class Editor:
 			depth = 1
 		nameKey = f'item{depth}'
 		statePar = None  # type: Optional[Par]
-		if rowDict.get('statePar', None):
+		if rowDict.get('statePar'):
 			statePar = getattr(ipar.editorUIState, rowDict['statePar'])
 		if statePar is not None:
 			if statePar.isMenu:
@@ -238,16 +242,18 @@ class Editor:
 		specialId = rowDict.get('specialId')
 		if specialId == 'recentWorkspaces':
 			workspaces = iop.userSettings.RecentWorkspaces()
-			print(self.ownerComp, 'creating recent workspace menu items', 'workspaces:', workspaces, 'nameKey:', nameKey)
 			return [
 				{
 					nameKey: workspace,
 					'checked': f'ipar.workspace.Settingsfile == {workspace!r}',
 					'itemValue': workspace,
 					'callback': 'onItemTrigger',
-					'specialId': specialId,
+					'specialId': 'loadWorkspace',
+					'dividerAfter': i == (len(workspaces) - 1),
+					'actionOp': 'workspace',
+					'actionMethod': 'LoadWorkspaceFile',
 				}
-				for workspace in workspaces
+				for i, workspace in enumerate(workspaces)
 			]
 		return []
 
