@@ -11,6 +11,7 @@ Workspace
 Component															
 	Save		onItemTrigger		not ipar.editorState.Hascomponent							SaveComponent			
 	Save As		onItemTrigger		not ipar.editorState.Hascomponent							PromptComponentSaveAs			
+	Save New Version		onItemTrigger		not ipar.editorState.Hascomponent							SaveComponentNewVersion			
 	Close		onItemTrigger	True	not ipar.editorState.Hascomponent							UnloadComponent			
 	Show Component Network		onItemTrigger		not ipar.editorState.Hascomponent							ShowNetwork			
 	Show Component Network (Popup)		onItemTrigger		not ipar.editorState.Hascomponent							ShowNetworkPopup			

@@ -97,30 +97,33 @@ class Editor:
 		ipar.compPicker.Selectedcomp = ''
 		self.LoadComponent(None)
 
+	def saveComponentAs(self, newName: str):
+		rootFolder = Path(ipar.workspace.Rootfolder.eval())
+		if not rootFolder:
+			raise Exception('No workspace root folder!')
+		layout = ipar.workspace.Folderlayout.eval()
+		if layout == 'subdirs':
+			tox = rootFolder / newName / f'{newName}.tox'
+		# elif layout == 'flat':
+		else:
+			tox = rootFolder / f'{newName}.tox'
+		expandedPath = Path(tdu.expandPath(str(tox)))
+		if expandedPath.exists():
+			result = ui.messageBox(
+				'Overwrite file?',
+				f'File already exists: {expandedPath}?\nAre you sure you want to overwrite it?',
+				buttons=['Ok', 'Cancel'])
+			if result != 0:
+				return
+		self.SaveComponent(str(tox))
+		if not ipar.compPicker.Refresh:
+			ipar.compPicker.Refreshpulse.pulse()
+
 	def PromptComponentSaveAs(self):
 		def _onOk(newName=None):
 			if not newName:
 				return
-			rootFolder = Path(ipar.workspace.Rootfolder.eval())
-			if not rootFolder:
-				raise Exception('No workspace root folder!')
-			layout = ipar.workspace.Folderlayout.eval()
-			if layout == 'subdirs':
-				tox = rootFolder / newName / f'{newName}.tox'
-			# elif layout == 'flat':
-			else:
-				tox = rootFolder / f'{newName}.tox'
-			expandedPath = Path(tdu.expandPath(tox))
-			if expandedPath.exists():
-				result = ui.messageBox(
-					'Overwrite file?',
-					f'File already exists: {expandedPath}?\nAre you sure you want to overwrite it?',
-					buttons=['Ok', 'Cancel'])
-				if result != 0:
-					return
-			self.SaveComponent(tox)
-			if not ipar.compPicker.Refresh:
-				ipar.compPicker.Refreshpulse.pulse()
+			self.saveComponentAs(newName)
 
 		currentTox = ipar.editorState.Toxfile.eval()
 		currentName = Path(currentTox).stem if currentTox else ''
@@ -132,6 +135,16 @@ class Editor:
 			oktext='Save',
 			ok=_onOk,
 		)
+
+	def SaveComponentNewVersion(self):
+		currentName = ipar.editorState.Name.eval()
+		if not currentName:
+			# TODO: error message?
+			return
+		baseName = tdu.base(currentName)
+		version = tdu.digits(currentName) or 0
+		newName = f'{baseName}{version + 1}'
+		self.saveComponentAs(newName)
 
 	@staticmethod
 	def _ShowNetwork(useActive=True):
