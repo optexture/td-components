@@ -18,7 +18,7 @@ if False:
 
 class Editor:
 	def __init__(self, ownerComp):
-		self.ownerComp = ownerComp
+		self.ownerComp = ownerComp  # type: COMP
 
 	def OnPickerItemSelect(self, compInfo: DAT):
 		if compInfo.numRows < 2:

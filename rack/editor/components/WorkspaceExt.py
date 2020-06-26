@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Optional
+from .SettingsExt import SettingsOp
 
 # noinspection PyUnreachableCode
 if False:
@@ -12,9 +13,7 @@ if False:
 
 class Workspace:
 	def __init__(self, ownerComp):
-		self.ownerComp = ownerComp
-		self.state = iop.workspaceState
-		self.statePar = ipar.workspaceState
+		self.ownerComp = ownerComp  # type: COMP
 
 	def PromptLoadWorkspaceFile(self):
 		path = ui.chooseFile(load=True, fileTypes=['json'], title='Open Workspace File')
@@ -38,8 +37,11 @@ class Workspace:
 			folderPath / 'workspace.json',
 			folderPath)
 
+	def workspaceSettingsOp(self):
+		return SettingsOp('workspace', op=self.ownerComp, pages=['Settings'])
+
 	def _LoadWorkspace(self, settingsPath: Optional[Path], folderPath: Optional[Path]):
-		self.statePar.Rootfolder = folderPath or ''
+		ipar.workspaceState.Rootfolder = folderPath or ''
 		self.ownerComp.par.Settingsfile = settingsPath or ''
 		jsonDat = self.ownerComp.op('settings_json')
 		if settingsPath is not None and settingsPath.exists():
@@ -50,21 +52,12 @@ class Workspace:
 			settings = {}
 		if folderPath is not None:
 			folderPath.mkdir(parents=True, exist_ok=True)
-		self._ApplySettingsToOp(
-			self.ownerComp,
-			settings.get('workspace') or {},
-			paramNames=[],
-			paramPages=['Settings'],
-		)
+		self.workspaceSettingsOp().applySettings(settings.get('workspace'))
 		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
 		if opTable:
 			for i in range(1, opTable.numRows):
 				opName = opTable[i, 'name'].val
-				self._ApplySettingsToOp(
-					getattr(iop, opName, None),
-					settings.get(opName) or {},
-					(opTable[i, 'params'].val or '').split(' '),
-					(opTable[i, 'paramPages'].val or '').split(' '))
+				SettingsOp.fromDatRow(opTable, i).applySettings(settings.get(opName))
 		self.ownerComp.par.Name = self.ownerComp.par.Name or (folderPath.name if folderPath is not None else '')
 		self.ownerComp.par.Settings = settings
 		self.ownerComp.par.Onworkspaceload.pulse()
@@ -73,51 +66,20 @@ class Workspace:
 		self._LoadWorkspace(None, None)
 		self.ownerComp.par.Onworkspaceunload.pulse()
 
-	@staticmethod
-	def _ApplySettingsToOp(
-			o: Optional[OP],
-			settings: dict,
-			paramNames: List[str],
-			paramPages: List[str]):
-		pars = _getOpParams(o, paramNames, paramPages)
-		for par in pars:
-			if par.name in settings:
-				par.val = settings[par.name]
-			else:
-				par.val = par.default
-
 	def _BuildSettings(self):
 		settings = self.ownerComp.par.Settings.eval() or {}
-		settings['workspace'] = self._BuildSettingsForOp(
-			self.ownerComp,
-			paramNames=[],
-			paramPages=['Settings'],
-		)
+		settings['workspace'] = self.workspaceSettingsOp().buildSettings()
 		opTable = self.ownerComp.par.Settingsoptable.eval()  # type: DAT
 		if opTable:
 			for i in range(1, opTable.numRows):
 				opName = opTable[i, 'name'].val
-				opSettings = self._BuildSettingsForOp(
-					getattr(iop, opName, None),
-					(opTable[i, 'params'].val or '').split(' '),
-					(opTable[i, 'paramPages'].val or '').split(' '))
-				settings[opName] = opSettings
-		return settings
-
-	@staticmethod
-	def _BuildSettingsForOp(
-			o: Optional[OP],
-			paramNames: List[str],
-			paramPages: List[str]):
-		settings = {}
-		for par in _getOpParams(o, paramNames, paramPages):
-			settings[par.name] = par.eval()
+				settings[opName] = SettingsOp.fromDatRow(opTable, i).buildSettings()
 		return settings
 
 	def SaveSettings(self):
-		if not self.statePar.Rootfolder or not self.ownerComp.par.Settingsfile:
+		if not ipar.workspaceState.Rootfolder or not self.ownerComp.par.Settingsfile:
 			raise Exception('No workspace selected')
-		folderPath = Path(self.statePar.Rootfolder.eval())
+		folderPath = Path(ipar.workspaceState.Rootfolder.eval())
 		settings = self._BuildSettings()
 		self.ownerComp.par.Settings = settings
 		settingsJson = json.dumps(settings, indent='  ')
@@ -126,19 +88,3 @@ class Workspace:
 		jsonDat.text = settingsJson
 		jsonDat.par.writepulse.pulse()
 		print(f'Saved workspace settings to {jsonDat.par.file}')
-
-def _getOpParams(o: Optional[OP], paramNames: List[str], paramPages: List[str]):
-	if not o:
-		return []
-	pars = []
-	if paramNames:
-		for par in o.pars(*paramNames):
-			if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
-				pars.append(par)
-	if paramPages:
-		for page in o.customPages:
-			if page.name in paramPages:
-				for par in page.pars:
-					if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
-						pars.append(par)
-	return pars

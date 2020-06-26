@@ -1,45 +1,81 @@
-"""
-Extension classes enhance TouchDesigner components with python. An
-extension is accessed via ext.ExtensionClassName from any operator
-within the extended component. If the extension is promoted via its
-Promote Extension parameter, all its attributes with capitalized names
-can be accessed externally, e.g. op('yourComp').PromotedFunction().
+from dataclasses import dataclass
+import json
+from pathlib import Path
+from typing import List, Optional, Union
 
-Help: search "Extensions" in wiki
-"""
+# noinspection PyUnreachableCode
+if False:
+	# noinspection PyUnresolvedReferences
+	from _stubs import *
 
-from TDStoreTools import StorageManager
-TDF = op.TDModules.mod.TDFunctions
+class SettingsExtBase:
+	def loadSettingsFile(self, filePath: Path, opTable: 'DAT' = None):
+		if filePath and filePath.exists():
+			with filePath.open() as f:
+				text = f.read()
+				settings = json.loads(text or '{}')
+		else:
+			settings = {}
+		pass
+	def buildSettings(self):
+		pass
 
-class SettingsExt:
-	"""
-	SettingsExt description
-	"""
+@dataclass
+class SettingsOp:
+	name: str
+	op: Optional['OP'] = None
+	# note that this is an OR combination, meaning that it is all the params that
+	# are listed in `paramNames` plus all the params in all the pages listed in `paramPages`
+	params: Optional[List[str]] = None
+	pages: Optional[List[str]] = None
+
+	@classmethod
+	def fromDatRow(cls, dat: 'DAT', row):
+		return cls(
+			name=str(dat[row, 'name']),
+			params=str(dat[row, 'params'] or '').split(' '),
+			pages=str(dat[row, 'paramPages'] or '').split(' '),
+		)
+
+	def _getParams(self):
+		if self.op:
+			o = self.op
+		else:
+			o = getattr(iop, self.name, None)
+		if not o:
+			return []
+		pars = []
+		if self.params:
+			for par in o.pars(*self.params):
+				if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
+					pars.append(par)
+		if self.pages:
+			for page in o.customPages:
+				if page.name in self.pages:
+					for par in page.pars:
+						if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
+							pars.append(par)
+		return pars
+
+	def buildSettings(self):
+		return {
+			par.name: par.eval()
+			for par in self._getParams()
+		}
+
+	def applySettings(self, settings: dict):
+		for par in self._getParams():
+			if settings and par.name in settings:
+				par.val = settings[par.name]
+			else:
+				par.val = par.default
+
+class UserSettings:
 	def __init__(self, ownerComp):
-		# The component to which this extension is attached
-		self.ownerComp = ownerComp
+		self.ownerComp = ownerComp  # type: COMP
 
-		# properties
-		TDF.createProperty(self, 'MyProperty', value=0, dependable=True,
-						   readOnly=False)
+	def LoadSettings(self):
+		pass
 
-		# attributes:
-		self.a = 0 # attribute
-		self.B = 1 # promoted attribute
-
-		# stored items (persistent across saves and re-initialization):
-		storedItems = [
-			# Only 'name' is required...
-			{'name': 'StoredProperty', 'default': None, 'readOnly': False,
-			 						'property': True, 'dependable': True},
-		]
-		# Uncomment the line below to store StoredProperty. To clear stored
-		# 	items, use the Storage section of the Component Editor
-		
-		# self.stored = StorageManager(self, ownerComp, storedItems)
-
-	def myFunction(self, v):
-		debug(v)
-
-	def PromotedFunction(self, v):
-		debug(v)
+	def SaveSettings(self):
+		pass
