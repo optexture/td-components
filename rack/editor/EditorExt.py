@@ -208,20 +208,20 @@ class Editor:
 
 	def GetMenuItems(self, rowDict: dict, **kwargs):
 		print(self.ownerComp, 'GetMenuItems', rowDict)
+		depth = rowDict.get('itemDepth', '')
+		if depth == '':
+			depth = 1
+		nameKey = f'item{depth}'
 		statePar = None  # type: Optional[Par]
 		if rowDict.get('statePar', None):
 			statePar = getattr(ipar.editorUIState, rowDict['statePar'])
 		if statePar is not None:
-			depth = rowDict.get('itemDepth', '')
-			if depth == '':
-				depth = 1
-			nameKey = f'item{depth}'
 			if statePar.isMenu:
 				optionCount = len(statePar.menuNames)
 				return [
 					{
 						nameKey: label,
-						'checked': f'ipar.editorUIState.{statePar.name} == "{name}"',
+						'checked': f'ipar.editorUIState.{statePar.name} == {name!r}',
 						'statePar': statePar.name,
 						'itemValue': name,
 						'callback': 'onItemTrigger',
@@ -235,7 +235,20 @@ class Editor:
 					'checked': f'ipar.editorUIState.{statePar.name}',
 					'callback': 'onItemTrigger',
 				}
-				pass
+		specialId = rowDict.get('specialId')
+		if specialId == 'recentWorkspaces':
+			workspaces = iop.userSettings.RecentWorkspaces()
+			print(self.ownerComp, 'creating recent workspace menu items', 'workspaces:', workspaces, 'nameKey:', nameKey)
+			return [
+				{
+					nameKey: workspace,
+					'checked': f'ipar.workspace.Settingsfile == {workspace!r}',
+					'itemValue': workspace,
+					'callback': 'onItemTrigger',
+					'specialId': specialId,
+				}
+				for workspace in workspaces
+			]
 		return []
 
 def _ShowPromptDialog(

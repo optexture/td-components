@@ -107,7 +107,7 @@ class UserSettings(SettingsExtBase):
 	def SaveSettings(self):
 		self.loadSettingsFile(self.getSettingsPath())
 
-	def RecentWorkspaces(self):
+	def RecentWorkspaces(self) -> List[str]:
 		return self.ownerComp.par.Recentworkspaces.eval() or []
 
 	def AddRecentWorkspace(self, workspaceSettingsFile: str):
