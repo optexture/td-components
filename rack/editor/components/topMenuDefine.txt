@@ -6,8 +6,6 @@ Workspace
 	Close Workspace		onItemTrigger		not ipar.workspace.Rootfolder						workspace	UnloadWorkspace			
 	Recent			True											
 									getMenuItems	recentWorkspaces					2
-		Clear Recent File List													
-	Quit														
 Component															
 	Save		onItemTrigger		not ipar.editorState.Hascomponent							SaveComponent			
 	Save As		onItemTrigger		not ipar.editorState.Hascomponent							PromptComponentSaveAs			

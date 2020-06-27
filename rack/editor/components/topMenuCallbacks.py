@@ -14,52 +14,13 @@ TopMenu info keys:
 	'menu': the popMenu component inside topMenu
 """
 
-#################################
-# exampleMenuDefine callbacks
 
-def onQuit(info):
-	"""
-	A simple menu item callback, named in the Top Menu DAT table
-	"""
-	debug('QUIT!')
-
-guides = False
-grid = True
-
-def onSetting(info):
-	"""
-	A menu item callback that works on multiple menu items. The checkboxes in
-	the menu evaluate the global guides and grid variables above to determine
-	their state. The expressions used to evaluate the checkbox state are
-	defined in the Top Menu DAT.
-	"""
-	global guides, grid
-	if info['item'] == 'Show Guides':
-		guides = not guides
-	elif info['item'] == 'Show Grid':
-		grid = not grid
-
-def getRecentFiles(info):
-	"""
-	A rowCallback used in the Top Menu DAT table to automatically generate rows.
-	These callbacks must return a dictionary or list of dictionaries that mimic
-	the columns in the Top Menu DAT. Dictionaries only need the columns with
-	data in them, but must have corresponding columns in the Top Menu DAT in
-	order to be recognized.
-	"""
-	return [
-		{'item2': 'File 1'},
-		{'item2': 'File 2', 'highlight': True},
-		{'item2': 'File three', 'dividerAfter': True}
-	]
 
 def getMenuItems(info):
 	items = ext.editor.GetMenuItems(**info)
 	# print(f'getMenuItems -> {items}')
 	return items
 
-# end examples
-####################################
 
 def onItemTrigger(info):
 	ext.editor.OnMenuTrigger(**info)
