@@ -376,6 +376,8 @@ class LibraryLoader:
 		for i, lib in enumerate(libs):
 			if not lib.path:
 				continue
+			if lib.shortcut and hasattr(op, lib.shortcut):
+				continue
 			comp = self.ownerComp.loadTox(lib.path)
 			comp.par.externaltox = lib.path
 			if lib.shortcut:
