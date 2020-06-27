@@ -66,6 +66,7 @@ class Editor:
 		iop.editorState.cook(force=True)
 		self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
 		self.ownerComp.op('sel_selected_body_panel_tab').cook(force=True)
+		self.ReloadMenu()
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
 		comp = iop.hostedComp
@@ -192,11 +193,13 @@ class Editor:
 		self.UnloadComponent()
 		ipar.compPicker.Refreshpulse.pulse()
 		iop.libraryLoader.UnloadLibraries()
+		self.ReloadMenu()
 
 	def OnWorkspaceLoad(self):
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
 		iop.userSettings.AddRecentWorkspace(ipar.workspace.Settingsfile.eval())
+		self.ReloadMenu()
 
 	def OnMenuTrigger(self, define: dict = None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())
@@ -269,6 +272,11 @@ class Editor:
 				for i, workspace in enumerate(workspaces)
 			]
 		return []
+
+	def ReloadMenu(self):
+		menu = self.ownerComp.op('topMenu')
+		menu.allowCooking = False
+		menu.allowCooking = True
 
 def _ShowPromptDialog(
 		title=None,
