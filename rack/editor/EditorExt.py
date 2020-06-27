@@ -33,12 +33,6 @@ class Editor:
 	def LoadComponent(self, tox: Optional[str], thumb: Optional[str] = None):
 		comp = iop.hostedComp
 		if not tox:
-			ipar.editorState.Hascomponent = False
-			ipar.editorState.Thumbfile = ''
-			ipar.editorState.Toxfile = ''
-			ipar.editorState.Name = ''
-			ipar.editorState.Modifieddate = ''
-			ipar.editorState.Hascomponentui = False
 			comp.par.externaltox = ''
 			comp.destroyCustomPars()
 			for child in list(comp.children):
@@ -51,17 +45,9 @@ class Editor:
 			msg = f'Loading component {tdu.expandPath(tox)}'
 			print(msg)
 			ui.status = msg
-			ipar.editorState.Thumbfile = thumb or ''
-			ipar.editorState.Toxfile = tox
 			comp.par.externaltox = tox
 			comp.par.reinitnet.pulse()
-			comp = iop.hostedComp  # in case the OP was replaced due to an OP type change
-			toxPath = Path(tox)
-			ipar.editorState.Name = toxPath.stem
-			modified = datetime.fromtimestamp(toxPath.stat().st_mtime)
-			ipar.editorState.Modifieddate = modified.strftime('%Y-%m-%d %H:%M')
-			ipar.editorState.Hascomponent = True
-			ipar.editorState.Hascomponentui = comp.isPanel
+		self.updateComponentProperties(tox, thumb)
 		# Ensure that the video and audio outputs are found and updated
 		iop.editorState.cook(force=True)
 		self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
@@ -87,12 +73,31 @@ class Editor:
 		print(msg)
 		ui.status = msg
 		comp.save(tox, createFolders=True)
+		self.updateComponentProperties(tox, thumb)
 		thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
 		if thumbSource:
 			if not thumb:
 				thumb = expandedPath.with_suffix('.png')
 				ipar.editorState.Thumbfile = thumb
 			thumbSource.save(thumb)
+
+	@staticmethod
+	def updateComponentProperties(tox: Optional[str], thumb: Optional[str]):
+		if not tox:
+			ipar.editorState.Hascomponent = False
+			ipar.editorState.Thumbfile = ''
+			ipar.editorState.Toxfile = ''
+			ipar.editorState.Name = ''
+			ipar.editorState.Modifieddate = ''
+			ipar.editorState.Hascomponentui = False
+		else:
+			toxPath = Path(tox)
+			ipar.editorState.Name = toxPath.stem
+			ipar.editorState.Thumbfile = thumb or ''
+			modified = datetime.fromtimestamp(toxPath.stat().st_mtime)
+			ipar.editorState.Modifieddate = modified.strftime('%Y-%m-%d %H:%M')
+			ipar.editorState.Hascomponent = True
+			ipar.editorState.Hascomponentui = iop.hostedComp.isPanel
 
 	def UnloadComponent(self):
 		ipar.compPicker.Selectedcomp = ''
