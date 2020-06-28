@@ -133,7 +133,7 @@ class Editor:
 
 		currentTox = ipar.editorState.Toxfile.eval()
 		currentName = Path(currentTox).stem if currentTox else ''
-		_ShowPromptDialog(
+		showPromptDialog(
 			title='Save component as',
 			text='Choose component name',
 			default=currentName,
@@ -153,22 +153,22 @@ class Editor:
 		self.saveComponentAs(newName)
 
 	@staticmethod
-	def _ShowNetwork(useActive=True):
+	def showNetwork(useActive=True):
 		comp = iop.hostedComp
 		pane = None
 		if useActive:
-			pane = _GetActiveEditor()
+			pane = getActiveEditor()
 		if not pane:
-			pane = _GetPaneByName('compeditor')
+			pane = getPaneByName('compeditor')
 		if not pane:
 			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
 		pane.owner = comp
 
 	def ShowNetwork(self):
-		self._ShowNetwork(useActive=True)
+		self.showNetwork(useActive=True)
 
 	def ShowNetworkPopup(self):
-		self._ShowNetwork(useActive=False)
+		self.showNetwork(useActive=False)
 
 	@staticmethod
 	def FindVideoOutput():
@@ -283,7 +283,7 @@ class Editor:
 		menu.allowCooking = False
 		menu.allowCooking = True
 
-def _ShowPromptDialog(
+def showPromptDialog(
 		title=None,
 		text=None,
 		default='',
@@ -311,7 +311,7 @@ def _ShowPromptDialog(
 		enterButton=1, escButton=2, escOnClickAway=True,
 		callback=_callback)
 
-def _GetActiveEditor():
+def getActiveEditor():
 	pane = ui.panes.current
 	if pane.type == PaneType.NETWORKEDITOR:
 		return pane
@@ -319,7 +319,7 @@ def _GetActiveEditor():
 		if pane.type == PaneType.NETWORKEDITOR:
 			return pane
 
-def _GetPaneByName(name):
+def getPaneByName(name):
 	for pane in ui.panes:
 		if pane.name == name:
 			return pane
@@ -342,12 +342,12 @@ class LibraryLoader:
 	def BuildLibraryTable(self, dat: 'DAT'):
 		dat.clear()
 		dat.appendRow(['shortcut', 'path', 'allPaths'])
-		libs = self._ParseLibraries()
+		libs = self.parseLibraries()
 		if not libs:
 			return
 		dat.appendRows([list(lib) for lib in libs])
 
-	def _ParseLibraries(self):
+	def parseLibraries(self):
 		toxes = self.ownerComp.par.Libraries.eval() or []  # type: List[str]
 		if not toxes:
 			return []
@@ -372,7 +372,7 @@ class LibraryLoader:
 		return libs
 
 	def LoadLibraries(self):
-		libs = self._ParseLibraries()
+		libs = self.parseLibraries()
 		for i, lib in enumerate(libs):
 			if not lib.path:
 				continue
