@@ -15,6 +15,9 @@ Component
 	Show Component Network (Popup)		onItemTrigger		not ipar.editorState.Hascomponent							ShowNetworkPopup			
 	Customize Component		onItemTrigger		not ipar.editorState.Hascomponent							CustomizeComponent			
 View															
-									getMenuItems				Selectedview		1
-	Right Panel														
+	Left Panel			True											
+									getMenuItems				Selectedleftpanel		2
+	Main View			True											
+									getMenuItems				Selectedview		2
+	Right Panel			True											
 									getMenuItems				Selectedrightpanel		2
