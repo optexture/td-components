@@ -441,7 +441,7 @@ class OP:
 	def unstore(self, keys1, *morekeys): pass
 	def storeStartupValue(self, key, value): pass
 	def unstoreStartupValue(self, *keys): pass
-	def fetch(self, key, default, search=True, storeDefault=False): pass
+	def fetch(self, key, default=None, search=True, storeDefault=False): pass
 	def fetchOwner(self, key) -> '_AnyOpT': pass
 
 	def addScriptErrors(self, msg): pass

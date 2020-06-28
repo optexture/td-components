@@ -2,12 +2,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # noinspection PyUnreachableCode
 if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
+
+try:
+	from TDStoreTools import DependList, DependDict
+except ImportError:
+	from _stubs.TDStoreTools import DependList, DependDict
 
 class SettingsExtBase(ABC):
 	@abstractmethod
@@ -26,7 +31,7 @@ class SettingsExtBase(ABC):
 	def saveSettingsFile(self, filePath: Path):
 		settings = self.buildSettings()
 		with filePath.open('w') as f:
-			json.dump(settings, f, indent='  ')
+			json.dump(settings, f, indent='  ', cls=_CustomEncoder)
 		return settings
 
 	def applySettings(self, settings: dict):
@@ -96,7 +101,33 @@ class UserSettings(SettingsExtBase):
 		self.ownerComp = ownerComp  # type: COMP
 
 	def getSettingsOps(self) -> List['SettingsOp']:
-		return [SettingsOp('settings', pages=['Settings'])]
+		return [SettingsOp('settings', op=self.ownerComp, pages=['Settings'])]
+
+	def buildSettings(self):
+		settings = super().buildSettings()
+		settings['recorderPresets'] = self.getRecorderPresets()
+		return settings
+
+	def getRecorderPresets(self):
+		recorderPresets = self.getRecorderPresetsComp()
+		if not recorderPresets:
+			return {}
+		return {
+			'Banks': recorderPresets.Banks
+		}
+
+	def setRecorderPresets(self, settings):
+		recorderPresets = self.getRecorderPresetsComp()
+		if not recorderPresets:
+			return
+		recorderPresets.Banks = (settings and settings.get('Banks')) or []
+
+	def applySettings(self, settings: dict):
+		super().applySettings(settings)
+		self.setRecorderPresets(settings.get('recorderPresets'))
+
+	def getRecorderPresetsComp(self) -> 'Any':
+		return self.ownerComp.par.Recorderpresetscomp.eval()
 
 	def getSettingsPath(self):
 		return Path(self.ownerComp.par.Usersettingsfile.eval())
@@ -108,14 +139,16 @@ class UserSettings(SettingsExtBase):
 		self.LoadSettings()
 
 	def SaveSettings(self):
-		self.loadSettingsFile(self.getSettingsPath())
+		self.saveSettingsFile(self.getSettingsPath())
 
 	def Savesettings(self, par):
 		self.SaveSettings()
 
 	def RecentWorkspaces(self) -> List[str]:
 		return [
-			path for path in self.ownerComp.par.Recentworkspaces.eval() or [] if path
+			path
+			for path in self.ownerComp.par.Recentworkspaces.eval() or []
+			if path and path != '.'
 		]
 
 	def AddRecentWorkspace(self, workspaceSettingsFile: str):
@@ -126,3 +159,9 @@ class UserSettings(SettingsExtBase):
 		workspaces.insert(0, workspaceSettingsFile)
 		self.ownerComp.par.Recentworkspaces.val = workspaces
 		self.SaveSettings()
+
+class _CustomEncoder(json.JSONEncoder):
+	def default(self, o):
+		if isinstance(o, (DependList, DependDict)):
+			return o.getRaw()
+		return o
