@@ -73,26 +73,43 @@ class SettingsOp:
 		pars = []
 		if self.params:
 			for par in o.pars(*self.params):
-				if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
+				if self._isEligible(par):
 					pars.append(par)
 		if self.pages:
 			for page in o.customPages:
 				if page.name in self.pages:
 					for par in page.pars:
-						if par.enable and not par.readOnly and not par.label.startswith('-') and par.isCustom:
+						if self._isEligible(par):
 							pars.append(par)
 		return pars
 
+	@staticmethod
+	def _isEligible(par: 'Par'):
+		if not par.enable or par.readOnly or not par.isCustom:
+			return False
+		if par.label.startswith('-'):
+			return False
+		if par.isPulse:
+			return False
+		return True
+
 	def buildSettings(self):
-		return {
-			par.name: par.eval()
-			for par in self._getParams()
-		}
+		settings = {}
+		for par in self._getParams():
+			if par.mode == ParMode.CONSTANT:
+				settings[par.name] = par.eval()
+			elif par.mode == ParMode.EXPRESSION:
+				settings[par.name] = {'$': par.expr}
+		return settings
 
 	def applySettings(self, settings: dict):
 		for par in self._getParams():
 			if settings and par.name in settings:
-				par.val = settings[par.name]
+				val = settings[par.name]
+				if isinstance(val, dict) and '$' in val:
+					par.expr = val['$']
+				else:
+					par.val = val
 			else:
 				par.val = par.default
 
