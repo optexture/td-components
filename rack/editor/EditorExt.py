@@ -94,6 +94,7 @@ class Editor:
 			toxPath = Path(tox)
 			ipar.editorState.Name = toxPath.stem
 			ipar.editorState.Thumbfile = thumb or ''
+			ipar.editorState.Toxfile = tox
 			modified = datetime.fromtimestamp(toxPath.stat().st_mtime)
 			ipar.editorState.Modifieddate = modified.strftime('%Y-%m-%d %H:%M')
 			ipar.editorState.Hascomponent = True
