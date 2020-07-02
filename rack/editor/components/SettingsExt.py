@@ -156,7 +156,9 @@ class UserSettings(SettingsExtBase):
 		self.LoadSettings()
 
 	def SaveSettings(self):
-		self.saveSettingsFile(self.getSettingsPath())
+		filePath = self.getSettingsPath()
+		self.saveSettingsFile(filePath)
+		print(f'Settings saved to {filePath}')
 
 	def Savesettings(self, par):
 		self.SaveSettings()
