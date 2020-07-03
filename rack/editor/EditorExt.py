@@ -10,6 +10,7 @@ if False:
 	from _stubs import *
 	from _stubs.PopDialogExt import PopDialogExt
 	from .components.SettingsExt import UserSettings
+	from .components.EditorViewsExt import EditorViews
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
 	ipar.workspace = Any()
@@ -17,6 +18,12 @@ if False:
 	ipar.editorUIState = Any()
 	iop.libraryLoader = LibraryLoader(None)
 	iop.userSettings = UserSettings(None)
+	iop.editorViews = EditorViews(None)
+
+try:
+	from EditorCommon import *
+except ImportError:
+	from .components.EditorCommon import *
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -200,12 +207,14 @@ class Editor:
 		ipar.compPicker.Refreshpulse.pulse()
 		iop.libraryLoader.UnloadLibraries()
 		self.ReloadMenu()
+		iop.editorViews.OnWorkspaceUnload()
 
 	def OnWorkspaceLoad(self):
 		self.OnWorkspaceUnload()
 		iop.libraryLoader.LoadLibraries()
 		iop.userSettings.AddRecentWorkspace(ipar.workspace.Settingsfile.eval())
 		self.ReloadMenu()
+		iop.editorViews.OnWorkspaceLoad()
 
 	def OnMenuTrigger(self, define: dict = None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())
@@ -346,7 +355,7 @@ class LibraryLoader:
 		libs = self.parseLibraries()
 		if not libs:
 			return
-		dat.appendRows([list(lib) for lib in libs])
+		dat.appendRows([list(dataclasses.astuple(lib)) for lib in libs])
 
 	def parseLibraries(self):
 		toxes = self.ownerComp.par.Libraries.eval() or []  # type: List[str]
@@ -369,7 +378,7 @@ class LibraryLoader:
 				if effectivePath.exists():
 					actualPath = effectivePath.resolve()
 					break
-			libs.append(_LibrarySpec(shortcut, str(actualPath or ''), tox))
+			libs.append(LibrarySpec(shortcut, str(actualPath or ''), tox))
 		return libs
 
 	def LoadLibraries(self):
@@ -384,21 +393,3 @@ class LibraryLoader:
 			if lib.shortcut:
 				comp.par.opshortcut = lib.shortcut
 			comp.nodeY = 600 - (i * 150)
-
-@dataclass
-class _LibrarySpec:
-	shortcut: str
-	path: str
-	allPaths: str
-
-@dataclass
-class _ComponentSpec:
-	tox: Optional[str] = None
-	pars: Optional[Dict[str, Any]] = None
-
-	@classmethod
-	def fromDict(cls, d: dict):
-		return cls(**d)
-
-	def toDict(self):
-		return dataclasses.asdict(self)
