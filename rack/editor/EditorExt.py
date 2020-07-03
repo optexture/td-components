@@ -242,7 +242,7 @@ class Editor:
 					func(itemValue)
 
 	def GetMenuItems(self, rowDict: dict, **kwargs):
-		print(self.ownerComp, 'GetMenuItems', rowDict)
+		# print(self.ownerComp, 'GetMenuItems', rowDict)
 		depth = rowDict.get('itemDepth', '')
 		if depth == '':
 			depth = 1
