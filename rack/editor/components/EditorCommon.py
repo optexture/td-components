@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 # noinspection PyUnreachableCode
 if False:
@@ -62,3 +62,40 @@ class ComponentSpec:
 				par.expr = val['$']
 			else:
 				par.val = val
+
+@dataclass
+class UITab:
+	name: str
+	label: str
+	visible: Union[Callable[[], bool], bool] = None
+	icon: str = None
+	componentName: str = None
+	attrs: dict = None
+
+	def isVisible(self):
+		if self.visible is None:
+			return True
+		if isinstance(self.visible, int):
+			return bool(self.visible)
+		return self.visible()
+
+@dataclass
+class UITabSet:
+	tabs: List[UITab] = dataclasses.field(default_factory=list)
+	hasNone: bool = False
+	attrNames: List[str] = None
+
+	def buildTable(self, dat: 'DAT'):
+		dat.clear()
+		dat.appendRow(['name', 'label', 'icon', 'componentName'] + (self.attrNames or []))
+		if self.hasNone:
+			dat.appendRow(['none', 'None', chr(0xF156), ''])
+		for tab in self.tabs:
+			if not tab.isVisible():
+				continue
+			vals = [tab.name or '', tab.label or '', tab.icon or '', tab.componentName or '']
+			if self.attrNames:
+				for name in self.attrNames:
+					val = tab.attrs.get(name) if tab.attrs else None
+					vals.append(val if val is not None else '')
+			dat.appendRow(vals)

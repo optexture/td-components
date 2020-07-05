@@ -9,6 +9,7 @@ if False:
 	from _stubs.PopDialogExt import PopDialogExt
 	from .components.SettingsExt import UserSettings
 	from .components.EditorViewsExt import EditorViews
+	from ui.statusOverlayExt import StatusOverlay
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
 	ipar.workspace = Any()
@@ -17,6 +18,7 @@ if False:
 	iop.libraryLoader = LibraryLoader(None)
 	iop.userSettings = UserSettings(None)
 	iop.editorViews = EditorViews(None)
+	iop.statusOverlay = StatusOverlay(None)
 
 try:
 	from EditorCommon import *
@@ -26,6 +28,128 @@ except ImportError:
 class Editor:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp  # type: COMP
+		self.loadComponentMessageId = None
+
+	def hasExposedSubComponents(self):
+		if not ipar.workspace.Exposesubcomps or not self.hasComponent():
+			return False
+		return self.ownerComp.op('sub_comp_table').numRows > 1
+
+	@staticmethod
+	def hasComponent():
+		return ipar.editorState.Hascomponent.eval()
+
+	def getLeftTabSet(self):
+		return UITabSet(
+			hasNone=True,
+			tabs=[
+				UITab(
+					name='component_picker',
+					label='Component Picker',
+					componentName='component_picker',
+					icon=chr(0xF572),
+					visible=bool(ipar.workspace.Rootfolder),
+				),
+				UITab(
+					name='opBrowser',
+					label='Sub-Components',
+					componentName='opBrowser',
+					visible=self.hasExposedSubComponents(),
+					icon=chr(0xF645),
+				)
+			],
+		)
+
+	def getRightTabSet(self):
+		return UITabSet(
+			attrNames=[
+				'paramsOp', 'paramsPage', 'paramsScope', 'paramsCombine',
+				'showSubCompSelector',
+			],
+			hasNone=True,
+			tabs=[
+				UITab(
+					name='component_params',
+					label='Component Parameters',
+					componentName='parameters',
+					icon=chr(0xFB5E),
+					visible=self.hasComponent(),
+					attrs={
+						'paramsOp': iop.hostedComp,
+						'paramsPage': '*',
+						'paramsScope': '*',
+						'paramsCombine': 'any',
+						'showSubCompSelector': '0',
+					}
+				),
+				UITab(
+					name='sub_component_params',
+					label='Sub-Component Parameters',
+					componentName='parameters',
+					icon=chr(0xFB5F),
+					visible=self.hasExposedSubComponents(),
+					attrs={
+						'paramsOp': op(self.ownerComp.op('sub_comp_dropmenu').par.Value0),
+						'paramsPage': '*',
+						'paramsScope': '*',
+						'paramsCombine': 'any',
+						'showSubCompSelector': '1',
+					}
+				),
+				UITab(
+					name='recorder',
+					label='Recorder Settings',
+					componentName='parameters',
+					icon=chr(0xF44A),
+					visible=self.hasComponent(),
+					attrs={
+						'paramsOp': iop.recorder,
+						'paramsPage': 'Output Format Advanced',
+						'paramsScope': '',
+						'paramsCombine': 'any',
+						'showSubCompSelector': '0',
+					}
+				),
+				UITab(
+					name='workspace_settings',
+					label='Workspace Settings',
+					componentName='parameters',
+					icon=chr(0xF493),
+					visible=bool(ipar.workspace.Rootfolder),
+					attrs={
+						'paramsOp': iop.workspace,
+						'paramsPage': 'Settings',
+						'paramsScope': '^Settings',
+						'paramsCombine': 'all',
+						'showSubCompSelector': '0',
+					}
+				),
+			],
+		)
+
+	def getBodyTabSet(self):
+		tabs = UITabSet(
+			hasNone=False,
+			tabs=[
+				UITab(
+					name='preview_panel',
+					label='Preview',
+					componentName='preview_panel',
+					visible=self.hasComponent(),
+				)
+			],
+		)
+		# TODO: custom editor views
+		return tabs
+
+	def updateLeftPanelTabs(self):
+		self.getLeftTabSet().buildTable(self.ownerComp.op('set_left_panel_tabs'))
+
+	def updateRightPanelTabs(self):
+		self.getRightTabSet().buildTable(self.ownerComp.op('set_right_panel_tabs'))
+
+	def updateBodyPanelTabs(self):
+		self.getBodyTabSet().buildTable(self.ownerComp.op('set_body_panel_tabs'))
 
 	def OnPickerItemSelect(self, compInfo: DAT):
 		if compInfo.numRows < 2:
@@ -38,14 +162,28 @@ class Editor:
 	def queueMethodCall(self, method: str, *args):
 		run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5, delayRef=root)
 
+	def showStatusMessage(self, message: str, static=False):
+		print(self.ownerComp, 'STATUS', message)
+		ui.status = message
+		if static:
+			return iop.statusOverlay.AddStaticMessage(message)
+		else:
+			iop.statusOverlay.AddMessage(message)
+
+	@staticmethod
+	def clearStatusMessage(messageId: int):
+		if messageId is not None:
+			iop.statusOverlay.ClearMessage(messageId)
+
 	def LoadComponent(
 			self,
 			tox: Optional[str], thumb: Optional[str] = None,
 			thenRun: str = None, runArgs: list = None):
-		print('LoadComponent(', tox, ',', thumb, ')')
 		if not tox:
+			self.loadComponentMessageId = self.showStatusMessage('Unloading component...')
 			self.queueMethodCall('unloadComponent_stage', 0, thenRun, runArgs)
 		else:
+			self.loadComponentMessageId = self.showStatusMessage(f'Loading component {tox}...')
 			self.queueMethodCall('loadComponent_stage', 0, tox, thumb, thenRun, runArgs)
 
 	def loadComponent_stage(
@@ -56,16 +194,12 @@ class Editor:
 		print(self.ownerComp, 'loadComponent stage ', stage)
 		comp = iop.hostedComp
 		if stage == 0:
-			msg = f'Loading component {tdu.expandPath(tox)}'
-			print(msg)
-			ui.status = msg
+			self.showStatusMessage('Loading tox file')
 			comp.par.externaltox = tox
 			comp.par.reinitnet.pulse()
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 1:
 			self.updateComponentProperties(tox, thumb)
-			print(self.ownerComp, 'HALT!!!! I AM SCARED')
-			return
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 2:
 			self.updateComponentOutputs()
@@ -74,6 +208,8 @@ class Editor:
 			self.updateUIAfterComponentLoad()
 			if thenRun:
 				self.queueMethodCall(thenRun, *(runArgs or []))
+			self.clearStatusMessage(self.loadComponentMessageId)
+			self.loadComponentMessageId = None
 
 	def unloadComponent_stage(
 			self, stage: int,
@@ -81,19 +217,28 @@ class Editor:
 		print(self.ownerComp, 'unloadComponent stage ', stage)
 		comp = iop.hostedComp
 		if stage == 0:
-			print(self.ownerComp, '   detaching tox')
-			comp.par.externaltox = ''
-			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			if comp.par.externaltox:
+				self.showStatusMessage('Detaching tox')
+				comp.par.externaltox = ''
+				self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			else:
+				self.unloadComponent_stage(stage + 1, thenRun, runArgs)
 		elif stage == 1:
-			print(self.ownerComp, '   destroying params')
-			comp.destroyCustomPars()
-			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			if comp.customPars:
+				self.showStatusMessage('Destroying component parameters')
+				comp.destroyCustomPars()
+				self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			else:
+				self.unloadComponent_stage(stage + 1, thenRun, runArgs)
 		elif stage == 2:
-			print(self.ownerComp, '   destroying child components')
-			for child in list(comp.children):
-				if child.valid:
-					child.destroy()
-			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			if comp.children:
+				self.showStatusMessage('Destroying child components')
+				for child in list(comp.children):
+					if child.valid:
+						child.destroy()
+				self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+			else:
+				self.unloadComponent_stage(stage + 1, thenRun, runArgs)
 		elif stage == 3:
 			self.updateComponentProperties(None, None)
 			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
@@ -104,15 +249,21 @@ class Editor:
 			self.updateUIAfterComponentLoad()
 			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 6:
-			print(self.ownerComp, 'deselecting component in picker')
-			ipar.compPicker.Selectedcomp = ''
+			if ipar.compPicker.Selectedcomp:
+				self.showStatusMessage('Deselecting component in picker')
+				ipar.compPicker.Selectedcomp = ''
 			if thenRun:
 				self.queueMethodCall(thenRun, *(runArgs or []))
+			self.clearStatusMessage(self.loadComponentMessageId)
+			self.loadComponentMessageId = None
 
 	def updateUIAfterComponentLoad(self):
-		print(self.ownerComp, 'updateUIAfterComponentLoad')
-		self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
-		self.ownerComp.op('sel_selected_body_panel_tab').cook(force=True)
+		self.showStatusMessage('Updating UI after component change')
+		# self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
+		# self.ownerComp.op('sel_selected_body_panel_tab').cook(force=True)
+		self.updateLeftPanelTabs()
+		self.updateRightPanelTabs()
+		self.updateBodyPanelTabs()
 		self.ReloadMenu()
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
@@ -154,8 +305,8 @@ class Editor:
 					ipar.editorState.Thumbfile = thumb
 				thumbSource.save(thumb)
 
-	@staticmethod
-	def updateComponentProperties(tox: Optional[str], thumb: Optional[str]):
+	def updateComponentProperties(self, tox: Optional[str], thumb: Optional[str]):
+		self.showStatusMessage('Updating component properties')
 		if not tox:
 			ipar.editorState.Hascomponent = False
 			ipar.editorState.Thumbfile = ''
@@ -263,7 +414,7 @@ class Editor:
 			return o
 
 	def updateComponentOutputs(self):
-		print(self.ownerComp, 'updateComponentOutputs')
+		self.showStatusMessage('Locating component outputs')
 		ipar.editorState.Videooutput = self.FindVideoOutput() or ''
 		ipar.editorState.Audiooutput = self.FindAudioOutput() or ''
 
