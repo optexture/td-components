@@ -1142,3 +1142,4 @@ class RenderPickEvent(tuple):
 def debug(*args):
 	pass
 
+root = baseCOMP()

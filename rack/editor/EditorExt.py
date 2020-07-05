@@ -36,16 +36,23 @@ class Editor:
 			self.LoadComponent(tox, thumb)
 
 	def queueMethodCall(self, method: str, *args):
-		run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5)
+		run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5, delayRef=root)
 
-	def LoadComponent(self, tox: Optional[str], thumb: Optional[str] = None):
+	def LoadComponent(
+			self,
+			tox: Optional[str], thumb: Optional[str] = None,
+			thenRun: str = None, runArgs: list = None):
 		print('LoadComponent(', tox, ',', thumb, ')')
 		if not tox:
-			self.queueMethodCall('unloadComponent_stage', 0)
+			self.queueMethodCall('unloadComponent_stage', 0, thenRun, runArgs)
 		else:
-			self.queueMethodCall('loadComponent_stage', 0, tox, thumb)
+			self.queueMethodCall('loadComponent_stage', 0, tox, thumb, thenRun, runArgs)
 
-	def loadComponent_stage(self, stage: int, tox: Optional[str], thumb: Optional[str] = None):
+	def loadComponent_stage(
+			self,
+			stage: int,
+			tox: Optional[str], thumb: Optional[str] = None,
+			thenRun: str = None, runArgs: list = None):
 		print(self.ownerComp, 'loadComponent stage ', stage)
 		comp = iop.hostedComp
 		if stage == 0:
@@ -54,41 +61,51 @@ class Editor:
 			ui.status = msg
 			comp.par.externaltox = tox
 			comp.par.reinitnet.pulse()
-			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 1:
 			self.updateComponentProperties(tox, thumb)
-			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 2:
 			self.forceUpdateEditorState()
-			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 3:
 			self.updateUIAfterComponentLoad()
+			if thenRun:
+				self.queueMethodCall(thenRun, *(runArgs or []))
 
-	def unloadComponent_stage(self, stage: int):
+	def unloadComponent_stage(
+			self, stage: int,
+			thenRun: str = None, runArgs: list = None):
 		print(self.ownerComp, 'unloadComponent stage ', stage)
 		comp = iop.hostedComp
 		if stage == 0:
 			print(self.ownerComp, '   detaching tox')
 			comp.par.externaltox = ''
-			self.queueMethodCall('unloadComponent_stage', stage + 1)
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 1:
 			print(self.ownerComp, '   destroying params')
 			comp.destroyCustomPars()
-			self.queueMethodCall('unloadComponent_stage', stage + 1)
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 2:
 			print(self.ownerComp, '   destroying child components')
 			for child in list(comp.children):
 				if child.valid:
 					child.destroy()
-			self.queueMethodCall('unloadComponent_stage', stage + 1)
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 3:
 			self.updateComponentProperties(None, None)
-			self.queueMethodCall('unloadComponent_stage', stage + 1)
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 4:
 			self.forceUpdateEditorState()
-			self.queueMethodCall('unloadComponent_stage', stage + 1)
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 5:
 			self.updateUIAfterComponentLoad()
+			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
+		elif stage == 6:
+			print(self.ownerComp, 'deselecting component in picker')
+			ipar.compPicker.Selectedcomp = ''
+			if thenRun:
+				self.queueMethodCall(thenRun, *(runArgs or []))
 
 	def forceUpdateEditorState(self):
 		print(self.ownerComp, 'forceUpdateEditorState')
@@ -160,7 +177,6 @@ class Editor:
 			ipar.editorState.Hascomponentui = iop.hostedComp.isPanel
 
 	def UnloadComponent(self):
-		ipar.compPicker.Selectedcomp = ''
 		self.LoadComponent(None)
 
 	def saveComponentAs(self, newName: str):
@@ -255,18 +271,52 @@ class Editor:
 		ui.openCOMPEditor(comp)
 
 	def OnWorkspaceUnload(self):
-		self.UnloadComponent()
-		ipar.compPicker.Refreshpulse.pulse()
-		iop.libraryLoader.UnloadLibraries()
-		self.ReloadMenu()
-		iop.editorViews.OnWorkspaceUnload()
+		self.queueMethodCall('onWorkspaceUnload_stage', 0)
+
+	def onWorkspaceUnload_stage(self, stage: int, thenRun: str = None, runArgs: list = None):
+		print(self.ownerComp, 'onWorkspaceUnload stage', stage)
+		if stage == 0:
+			self.LoadComponent(None, None, 'onWorkspaceUnload_stage', [stage + 1, thenRun, runArgs])
+		elif stage == 1:
+			print(self.ownerComp, 'Refresh picker')
+			ipar.compPicker.Refreshpulse.pulse()
+			self.queueMethodCall('onWorkspaceUnload_stage', stage + 1, thenRun, runArgs)
+		elif stage == 2:
+			print(self.ownerComp, 'unload libraries')
+			iop.libraryLoader.UnloadLibraries()
+			self.queueMethodCall('onWorkspaceUnload_stage', stage + 1, thenRun, runArgs)
+		elif stage == 3:
+			print('reload menu')
+			self.ReloadMenu()
+			self.queueMethodCall('onWorkspaceUnload_stage', stage + 1, thenRun, runArgs)
+		elif stage == 4:
+			print(self.ownerComp, 'update editor views')
+			iop.editorViews.OnWorkspaceUnload()
+			if thenRun:
+				self.queueMethodCall(thenRun, *(runArgs or []))
 
 	def OnWorkspaceLoad(self):
-		self.OnWorkspaceUnload()
-		iop.libraryLoader.LoadLibraries()
-		iop.userSettings.AddRecentWorkspace(ipar.workspace.Settingsfile.eval())
-		self.ReloadMenu()
-		iop.editorViews.OnWorkspaceLoad()
+		self.queueMethodCall('onWorkspaceLoad_stage', 0)
+
+	def onWorkspaceLoad_stage(self, stage: int):
+		print(self.ownerComp, 'onWorkspaceLoad_stage', stage)
+		if stage == 0:
+			self.onWorkspaceUnload_stage(0, 'onWorkspaceLoad_stage', [stage + 1])
+		elif stage == 1:
+			print(self.ownerComp, 'load libraries')
+			iop.libraryLoader.LoadLibraries()
+			self.queueMethodCall('onWorkspaceLoad_stage', stage + 1)
+		elif stage == 2:
+			print(self.ownerComp, 'add recent workspace')
+			iop.userSettings.AddRecentWorkspace(ipar.workspace.Settingsfile.eval())
+			self.queueMethodCall('onWorkspaceLoad_stage', stage + 1)
+		elif stage == 3:
+			print(self.ownerComp, 'reload menu')
+			self.ReloadMenu()
+			self.queueMethodCall('onWorkspaceLoad_stage', stage + 1)
+		elif stage == 4:
+			print(self.ownerComp, 'update editor views')
+			iop.editorViews.OnWorkspaceLoad()
 
 	def OnMenuTrigger(self, define: dict = None, **kwargs):
 		print(self.ownerComp, 'OnMenuTrigger', locals())
