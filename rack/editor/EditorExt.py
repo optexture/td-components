@@ -200,6 +200,7 @@ class Editor:
 		comp = iop.hostedComp
 		if stage == 0:
 			self.showStatusMessage('Loading tox file')
+			comp.allowCooking = False
 			comp.par.externaltox = tox
 			comp.par.reinitnet.pulse()
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
@@ -211,6 +212,10 @@ class Editor:
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 3:
 			self.updateUIAfterComponentLoad()
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
+		elif stage == 4:
+			self.showStatusMessage('Enabling cooking in component')
+			comp.allowCooking = True
 			if thenRun:
 				self.queueMethodCall(thenRun, *(runArgs or []))
 			self.clearStatusMessage(self.loadComponentMessageId)
