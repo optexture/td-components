@@ -64,9 +64,11 @@ class Editor:
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 1:
 			self.updateComponentProperties(tox, thumb)
+			print(self.ownerComp, 'HALT!!!! I AM SCARED')
+			return
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 2:
-			self.forceUpdateEditorState()
+			self.updateComponentOutputs()
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 3:
 			self.updateUIAfterComponentLoad()
@@ -96,7 +98,7 @@ class Editor:
 			self.updateComponentProperties(None, None)
 			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 4:
-			self.forceUpdateEditorState()
+			self.updateComponentOutputs()
 			self.queueMethodCall('unloadComponent_stage', stage + 1, thenRun, runArgs)
 		elif stage == 5:
 			self.updateUIAfterComponentLoad()
@@ -106,11 +108,6 @@ class Editor:
 			ipar.compPicker.Selectedcomp = ''
 			if thenRun:
 				self.queueMethodCall(thenRun, *(runArgs or []))
-
-	def forceUpdateEditorState(self):
-		print(self.ownerComp, 'forceUpdateEditorState')
-		# Ensure that the video and audio outputs are found and updated
-		iop.editorState.cook(force=True)
 
 	def updateUIAfterComponentLoad(self):
 		print(self.ownerComp, 'updateUIAfterComponentLoad')
@@ -264,6 +261,11 @@ class Editor:
 				return o
 		for o in comp.findChildren(type=outCHOP, depth=1):
 			return o
+
+	def updateComponentOutputs(self):
+		print(self.ownerComp, 'updateComponentOutputs')
+		ipar.editorState.Videooutput = self.FindVideoOutput() or ''
+		ipar.editorState.Audiooutput = self.FindAudioOutput() or ''
 
 	@staticmethod
 	def CustomizeComponent():
