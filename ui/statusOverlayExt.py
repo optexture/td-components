@@ -28,35 +28,43 @@ class StatusOverlay:
 			self.stopTimer()
 		self.updateUI()
 
-	def Clearmessages(self, par: 'Par'):
-		self.ClearAllMessages()
-
 	def getMessageById(self, messageId: int):
 		for record in self.messages:
 			if record.id == messageId:
 				return record
 
-	def AddMessage(self, message: str):
-		return self.addMessage(message, transient=True)
-
 	def AddStaticMessage(self, message: str):
-		return self.addMessage(message, transient=False)
+		return self.AddMessage(message, temporary=False)
+
+	def Clearmessages(self, par: 'Par'):
+		self.ClearAllMessages()
+
+	def Addtemporarymessage(self, par: 'Par'):
+		self.addMessageFromPar(temporary=True)
+
+	def Addstaticmessage(self, par: 'Par'):
+		self.addMessageFromPar(temporary=False)
+
+	def addMessageFromPar(self, temporary: bool):
+		message = self.ownerComp.par.Messagetoadd.eval()
+		print('OMG ADD MESSAGE FROM PAR: ', repr(message))
+		if message:
+			self.AddMessage(message, temporary=temporary)
 
 	@staticmethod
 	def now():
 		return absTime.seconds
 
-	def addMessage(self, message: str, transient: bool):
-		# self.ownerComp.par.Transientduration.eval()
-		if transient:
+	def AddMessage(self, message: str, temporary: bool = True):
+		if temporary:
 			record = _Message(
-				self.nextId, message, self.now() + self.ownerComp.par.Transientduration)
+				self.nextId, message, self.now() + self.ownerComp.par.Temporaryduration)
 		else:
 			record = _Message(self.nextId, message)
 		self.nextId += 1
 		self.messages.append(record)
 		self.updateUI()
-		if transient:
+		if temporary:
 			# if not self.timer['timer_active']:
 			self.startTimer()
 		return record.id
