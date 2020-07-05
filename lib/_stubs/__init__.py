@@ -327,7 +327,7 @@ class OP:
 	base: str
 	passive: bool
 	curPar: 'Par'
-	time: 'OP'
+	time: 'timeCOMP'
 	ext: _T.Any
 	mod: _T.Any
 	par: _T.Any
@@ -1112,6 +1112,34 @@ class scriptCHOP(CHOP):
 	def copy(self, chop: CHOP): pass
 	def appendChan(self, name: str) -> 'Channel': pass
 
+class timerCHOP(CHOP):
+	beginFrame: _T.List[_T.Any]
+	beginSample: _T.List[_T.Any]
+	beginSeconds: _T.List[_T.Any]
+	cycle: float
+	fraction: float
+	runningFraction: float
+	runningFrame: float
+	runningLengthFrames: float
+	runningLengthSamples: float
+	runningLengthSeconds: float
+	runningLengthTimecode: str  # format 00:00:00.00
+	runningSample: float
+	runningSeconds: float
+	runningTimecode: str  # format 00:00:00.00
+	segment: float
+
+	def goToNextSegment(self): pass
+	def goToCycleEnd(self): pass
+	def goTo(
+			self,
+			segment: float = None,
+			cycle: float = None, endOfCycle=True,
+			seconds: float = None, frame: float = None, sample: float = None, fraction: float = None):
+		pass
+	def goToPrevSegment(self): pass
+	def lastCycle(self): pass
+
 
 class App:
 	name: str
@@ -1143,3 +1171,4 @@ def debug(*args):
 	pass
 
 root = baseCOMP()
+absTime = timeCOMP()
