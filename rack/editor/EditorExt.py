@@ -1,8 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from dataclasses import dataclass
-import dataclasses
 
 # noinspection PyUnreachableCode
 if False:
@@ -37,56 +35,110 @@ class Editor:
 			thumb = compInfo[1, 'thumb'].val
 			self.LoadComponent(tox, thumb)
 
+	def queueMethodCall(self, method: str, *args):
+		run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5)
+
 	def LoadComponent(self, tox: Optional[str], thumb: Optional[str] = None):
-		comp = iop.hostedComp
+		print('LoadComponent(', tox, ',', thumb, ')')
 		if not tox:
-			comp.par.externaltox = ''
-			comp.destroyCustomPars()
-			for child in list(comp.children):
-				if child.valid:
-					try:
-						child.destroy()
-					except:
-						pass
+			self.queueMethodCall('unloadComponent_stage', 0)
 		else:
+			self.queueMethodCall('loadComponent_stage', 0, tox, thumb)
+
+	def loadComponent_stage(self, stage: int, tox: Optional[str], thumb: Optional[str] = None):
+		print(self.ownerComp, 'loadComponent stage ', stage)
+		comp = iop.hostedComp
+		if stage == 0:
 			msg = f'Loading component {tdu.expandPath(tox)}'
 			print(msg)
 			ui.status = msg
 			comp.par.externaltox = tox
 			comp.par.reinitnet.pulse()
-		self.updateComponentProperties(tox, thumb)
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+		elif stage == 1:
+			self.updateComponentProperties(tox, thumb)
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+		elif stage == 2:
+			self.forceUpdateEditorState()
+			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb)
+		elif stage == 3:
+			self.updateUIAfterComponentLoad()
+
+	def unloadComponent_stage(self, stage: int):
+		print(self.ownerComp, 'unloadComponent stage ', stage)
+		comp = iop.hostedComp
+		if stage == 0:
+			print(self.ownerComp, '   detaching tox')
+			comp.par.externaltox = ''
+			self.queueMethodCall('unloadComponent_stage', stage + 1)
+		elif stage == 1:
+			print(self.ownerComp, '   destroying params')
+			comp.destroyCustomPars()
+			self.queueMethodCall('unloadComponent_stage', stage + 1)
+		elif stage == 2:
+			print(self.ownerComp, '   destroying child components')
+			for child in list(comp.children):
+				if child.valid:
+					child.destroy()
+			self.queueMethodCall('unloadComponent_stage', stage + 1)
+		elif stage == 3:
+			self.updateComponentProperties(None, None)
+			self.queueMethodCall('unloadComponent_stage', stage + 1)
+		elif stage == 4:
+			self.forceUpdateEditorState()
+			self.queueMethodCall('unloadComponent_stage', stage + 1)
+		elif stage == 5:
+			self.updateUIAfterComponentLoad()
+
+	def forceUpdateEditorState(self):
+		print(self.ownerComp, 'forceUpdateEditorState')
 		# Ensure that the video and audio outputs are found and updated
 		iop.editorState.cook(force=True)
+
+	def updateUIAfterComponentLoad(self):
+		print(self.ownerComp, 'updateUIAfterComponentLoad')
 		self.ownerComp.op('body_panel_tabbar').par.Value0 = 'preview_panel'
 		self.ownerComp.op('sel_selected_body_panel_tab').cook(force=True)
 		self.ReloadMenu()
 
 	def SaveComponent(self, tox: str = None, thumb: str = None):
+		self.queueMethodCall('saveComponent_stage', 0, tox, thumb)
+
+	def saveComponent_stage(self, stage: int, tox: str = None, thumb: str = None):
+		print(self.ownerComp, 'saveComponent stage', stage)
 		comp = iop.hostedComp
-		if tox:
-			ipar.editorState.Toxfile.val = tox
-			if thumb:
-				ipar.editorState.Thumbfile.val = thumb
-		else:
-			tox = ipar.editorState.Toxfile.eval()
-			if not tox:
-				return
-			if thumb:
-				ipar.editorState.Thumbfile.val = thumb
+		if stage == 0:
+			if tox:
+				ipar.editorState.Toxfile.val = tox
+				if thumb:
+					ipar.editorState.Thumbfile.val = thumb
 			else:
-				thumb = ipar.editorState.Thumbfile.eval()
-		expandedPath = Path(tdu.expandPath(tox))
-		msg = f'Saving component to {expandedPath}'
-		print(msg)
-		ui.status = msg
-		comp.save(tox, createFolders=True)
-		self.updateComponentProperties(tox, thumb)
-		thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
-		if thumbSource:
-			if not thumb:
-				thumb = expandedPath.with_suffix('.png')
-				ipar.editorState.Thumbfile = thumb
-			thumbSource.save(thumb)
+				tox = ipar.editorState.Toxfile.eval()
+				if not tox:
+					return
+				if thumb:
+					ipar.editorState.Thumbfile.val = thumb
+				else:
+					thumb = ipar.editorState.Thumbfile.eval()
+			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
+		elif stage == 1:
+			expandedPath = Path(tdu.expandPath(tox))
+			msg = f'Saving component to {expandedPath}'
+			print(msg)
+			ui.status = msg
+			comp.save(tox, createFolders=True)
+			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
+		elif stage == 2:
+			self.updateComponentProperties(tox, thumb)
+			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
+		elif stage == 3:
+			thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
+			if thumbSource:
+				if not thumb:
+					expandedPath = Path(tdu.expandPath(tox))
+					thumb = expandedPath.with_suffix('.png')
+					ipar.editorState.Thumbfile = thumb
+				thumbSource.save(thumb)
 
 	@staticmethod
 	def updateComponentProperties(tox: Optional[str], thumb: Optional[str]):
@@ -234,12 +286,11 @@ class Editor:
 		if actionOp is not None:
 			method = define.get('actionMethod')
 			if method and hasattr(actionOp, method):
-				func = getattr(actionOp, method)
 				itemValue = define.get('itemValue')
 				if itemValue in (None, ''):
-					func()
+					run(f'args[0].{method}()', actionOp, delayFrames=2)
 				else:
-					func(itemValue)
+					run(f'args[0].{method}(args[1])', actionOp, itemValue, delayFrames=2)
 
 	def GetMenuItems(self, rowDict: dict, **kwargs):
 		# print(self.ownerComp, 'GetMenuItems', rowDict)
