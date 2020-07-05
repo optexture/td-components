@@ -41,8 +41,8 @@ class Editor:
 
 	def getLeftTabSet(self):
 		return UITabSet(
-			hasNone=True,
 			tabs=[
+				UITab.noneTab(),
 				UITab(
 					name='component_picker',
 					label='Component Picker',
@@ -66,8 +66,8 @@ class Editor:
 				'paramsOp', 'paramsPage', 'paramsScope', 'paramsCombine',
 				'showSubCompSelector',
 			],
-			hasNone=True,
 			tabs=[
+				UITab.noneTab(),
 				UITab(
 					name='component_params',
 					label='Component Parameters',
@@ -129,7 +129,6 @@ class Editor:
 
 	def getBodyTabSet(self):
 		tabs = UITabSet(
-			hasNone=False,
 			tabs=[
 				UITab(
 					name='preview_panel',
@@ -143,13 +142,19 @@ class Editor:
 		return tabs
 
 	def updateLeftPanelTabs(self):
-		self.getLeftTabSet().buildTable(self.ownerComp.op('set_left_panel_tabs'))
+		tabs = self.getLeftTabSet()
+		tabs.buildTable(self.ownerComp.op('set_left_panel_tabs'))
+		tabs.updateParMenu(ipar.editorUIState.Selectedleftpanel)
 
 	def updateRightPanelTabs(self):
-		self.getRightTabSet().buildTable(self.ownerComp.op('set_right_panel_tabs'))
+		tabs = self.getRightTabSet()
+		tabs.buildTable(self.ownerComp.op('set_right_panel_tabs'))
+		tabs.updateParMenu(ipar.editorUIState.Selectedrightpanel)
 
 	def updateBodyPanelTabs(self):
-		self.getBodyTabSet().buildTable(self.ownerComp.op('set_body_panel_tabs'))
+		tabs = self.getBodyTabSet()
+		tabs.buildTable(self.ownerComp.op('set_body_panel_tabs'))
+		tabs.updateParMenu(ipar.editorUIState.Selectedview)
 
 	def OnPickerItemSelect(self, compInfo: DAT):
 		if compInfo.numRows < 2:

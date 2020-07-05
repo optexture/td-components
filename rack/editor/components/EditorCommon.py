@@ -67,17 +67,14 @@ class ComponentSpec:
 class UITab:
 	name: str
 	label: str
-	visible: Union[Callable[[], bool], bool] = None
+	visible: bool = True
 	icon: str = None
 	componentName: str = None
 	attrs: dict = None
 
-	def isVisible(self):
-		if self.visible is None:
-			return True
-		if isinstance(self.visible, int):
-			return bool(self.visible)
-		return self.visible()
+	@classmethod
+	def noneTab(cls):
+		return cls(name='none', label='None', icon=chr(0xF156))
 
 @dataclass
 class UITabSet:
@@ -88,10 +85,8 @@ class UITabSet:
 	def buildTable(self, dat: 'DAT'):
 		dat.clear()
 		dat.appendRow(['name', 'label', 'icon', 'componentName'] + (self.attrNames or []))
-		if self.hasNone:
-			dat.appendRow(['none', 'None', chr(0xF156), ''])
 		for tab in self.tabs:
-			if not tab.isVisible():
+			if not tab.visible:
 				continue
 			vals = [tab.name or '', tab.label or '', tab.icon or '', tab.componentName or '']
 			if self.attrNames:
@@ -99,3 +94,13 @@ class UITabSet:
 					val = tab.attrs.get(name) if tab.attrs else None
 					vals.append(val if val is not None else '')
 			dat.appendRow(vals)
+
+	def updateParMenu(self, par: 'Par'):
+		names = []
+		labels = []
+		for tab in self.tabs:
+			if tab.visible:
+				names.append(tab.name)
+				labels.append(tab.label)
+		par.menuNames = names
+		par.menuLabels = labels
