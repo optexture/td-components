@@ -33,9 +33,9 @@ class PopDialogExt:
 			{'name':'EnteredText', 'default':''}
 		]
 		self.stored = StorageManager(self, ownerComp, storedItems)
-		ownerComp.op('text/sizer').module.updateHeight()
+		self.UpdateTextHeight()
 
-	def OpenDefault(self, text='', title='', buttons=['OK'], callback=None,
+	def OpenDefault(self, text='', title='', buttons=('OK',), callback=None,
 					details=None, textEntry=False, escButton=1,
 					escOnClickAway=True, enterButton=1):
 		self.Open(text, title, buttons, callback, details, textEntry, escButton,
@@ -114,7 +114,7 @@ class PopDialogExt:
 				self.ownerComp.par.Enterbutton = 'None'
 			else:
 				self.ownerComp.par.Enterbutton = str(enterButton)
-		self.ownerComp.op('text/sizer').module.updateHeight()
+		self.UpdateTextHeight()
 		run("op('" + self.ownerComp.path + "').ext.PopDialogExt.actualOpen()",
 										delayFrames=1, delayRef=op.TDResources)
 
@@ -204,3 +204,7 @@ class PopDialogExt:
 		elif par.name == 'Helppage':
 			ui.viewFile('https://docs.derivative.ca/'
 						'index.php?title=Palette:popDialog')
+
+	def UpdateTextHeight(self):
+		self.ownerComp.op('text').par.h = \
+								self.ownerComp.op('text/text').textHeight
