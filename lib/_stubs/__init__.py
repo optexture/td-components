@@ -1087,6 +1087,7 @@ evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT
 parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
 animationCOMP = COMP
 inTOP = outTOP = TOP
+importselectSOP = SOP
 
 class objectCOMP(COMP):
 	localTransform: _Matrix
@@ -1172,3 +1173,5 @@ def debug(*args):
 
 root = baseCOMP()
 absTime = timeCOMP()
+
+me = None  # type: _AnyOpT
