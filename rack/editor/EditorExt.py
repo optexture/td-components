@@ -9,6 +9,7 @@ if False:
 	from _stubs.PopDialogExt import PopDialogExt
 	from .components.SettingsExt import UserSettings
 	from .components.EditorViewsExt import EditorViews
+	from .components.EditorToolsExt import EditorTools
 	from ui.statusOverlayExt import StatusOverlay
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
@@ -18,6 +19,7 @@ if False:
 	iop.libraryLoader = LibraryLoader(None)
 	iop.userSettings = UserSettings(None)
 	iop.editorViews = EditorViews(None)
+	iop.editorTools = EditorTools(None)
 	iop.statusOverlay = StatusOverlay(None)
 
 try:
@@ -398,6 +400,10 @@ class Editor:
 			pane = ui.panes.createFloating(type=PaneType.NETWORKEDITOR, name='compeditor')
 		pane.owner = comp
 
+	@staticmethod
+	def GetActiveNetworkEditor():
+		return getActiveEditor()
+
 	def ShowNetwork(self):
 		self.showNetwork(useActive=True)
 
@@ -455,6 +461,10 @@ class Editor:
 		elif stage == 4:
 			print(self.ownerComp, 'update editor views')
 			iop.editorViews.OnWorkspaceUnload()
+			self.queueMethodCall('onWorkspaceUnload_stage', stage + 1, thenRun, runArgs)
+		elif stage == 5:
+			print(self.ownerComp, 'update editor tools')
+			iop.editorTools.OnWorkspaceUnload()
 			if thenRun:
 				self.queueMethodCall(thenRun, *(runArgs or []))
 
@@ -479,6 +489,10 @@ class Editor:
 			self.queueMethodCall('onWorkspaceLoad_stage', stage + 1)
 		elif stage == 4:
 			print(self.ownerComp, 'update editor views')
+			iop.editorViews.OnWorkspaceLoad()
+			self.queueMethodCall('onWorkspaceLoad_stage', stage + 1)
+		elif stage == 5:
+			print(self.ownerComp, 'load editor tools')
 			iop.editorViews.OnWorkspaceLoad()
 
 	def OnMenuTrigger(self, define: dict = None, **kwargs):
