@@ -79,7 +79,7 @@ class SettingsOp:
 			for page in o.customPages:
 				if page.name in self.pages:
 					for par in page.pars:
-						if self._isEligible(par):
+						if par not in pars and self._isEligible(par):
 							pars.append(par)
 		return pars
 

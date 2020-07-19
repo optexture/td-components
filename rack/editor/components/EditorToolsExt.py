@@ -70,6 +70,7 @@ class EditorTools:
 	def ClearCustomTools(self):
 		self.customToolsScript.clear()
 		self.ownerComp.par.Customtoolscriptfile = ''
+		self.ownerComp.par.Customtoolscript = ''
 		self.updateToolTable()
 
 	def LoadCustomTools(self):
@@ -80,7 +81,7 @@ class EditorTools:
 			self.customToolsScript.par.file = file
 			self.customToolsScript.par.loadonstartpulse.pulse()
 			self.addCustomToolsFromScript(self.customToolsScript)
-		self.addCustomToolsFromScript(self.ownerComp.par.Customtoolsscript.eval())
+		self.addCustomToolsFromScript(self.ownerComp.par.Customtoolscript.eval())
 		self.updateToolTable()
 
 	def addCustomToolsFromScript(self, script: 'DAT'):
