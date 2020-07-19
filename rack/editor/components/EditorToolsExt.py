@@ -76,16 +76,29 @@ class EditorTools:
 		self.customTools.clear()
 		self.customToolsScript.clear()
 		file = self.ownerComp.par.Customtoolscriptfile.eval()
-		if not file:
+		if file:
+			self.customToolsScript.par.file = file
+			self.customToolsScript.par.loadonstartpulse.pulse()
+			self.addCustomToolsFromScript(self.customToolsScript)
+		self.addCustomToolsFromScript(self.ownerComp.par.Customtoolsscript.eval())
+		self.updateToolTable()
+
+	def addCustomToolsFromScript(self, script: 'DAT'):
+		if not script or not script.text:
 			return
-		self.customToolsScript.par.file = file
-		self.customToolsScript.par.loadonstartpulse.pulse()
-		if not self.customToolsScript.text:
+		try:
+			m = script.module
+		except Exception as e:
+			print(self.ownerComp, f'ERROR loading custom tools script: {e}')
 			return
-		m = self.customToolsScript.module
 		if not hasattr(m, 'getEditorTools'):
-			raise Exception('Custom tools script does not have `getEditorTools` function')
-		specs = m.getEditorTools()
+			print(self.ownerComp, 'ERROR: Custom tools script does not have `getEditorTools` function')
+			return
+		try:
+			specs = m.getEditorTools()
+		except Exception as e:
+			print(self.ownerComp, f'ERROR loading custom tools script: {e}')
+			return
 		if not specs:
 			return
 		for spec in specs:
@@ -95,7 +108,6 @@ class EditorTools:
 				print(self.ownerComp, f'ERROR parsing custom tool spec: {spec!r}\n{e}')
 				continue
 			self.customTools.append(tool)
-		self.updateToolTable()
 
 	def findTool(self, name: str):
 		# custom tools take precedence over built-in tools
