@@ -119,6 +119,30 @@ class Pane:
 	topRight: 'Coords'
 	type: 'PaneType'
 
+class NetworkEditor(Pane):
+	showBackdropCHOPs: bool
+	showBackdropGeometry: bool
+	showBackdropTOPs: bool
+	showColorPalette: bool
+	showDataLinks: bool
+	showList: bool
+	showNetworkOverview: bool
+	showParameters: bool
+	straightLinks: bool
+	x: float
+	y: float
+	zoom: float
+
+	def fitWidth(self, width) -> None: pass
+
+	def fitHeight(self, height) -> None: pass
+
+	def home(self, zoom=True, op=None) -> None: pass
+
+	def homeSelected(self, zoom=True) -> None: pass
+
+	def placeOPs(self, listOfOPs, inputIndex=None, outputIndex=None, delOP=None, undoName='Operators') -> None: pass
+
 class Undo:
 	globalState: bool
 	redoStack: list
