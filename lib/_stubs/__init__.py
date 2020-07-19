@@ -4,19 +4,27 @@ from abc import ABC as _ABC
 # noinspection PyShadowingBuiltins
 import typing as _T
 import enum as _E
+import datetime as _DT
 
 # noinspection PyUnreachableCode
 if False:
 	import numpy
 
 class _Expando:
-	def __init__(self):
-		pass
+	def __getattr__(self, item) -> _T.Any: pass
 
-mod = _Expando()
 ui: 'UI'
-PaneType = _Expando()
-PaneType.NETWORKEDITOR = None
+
+class MOD:
+	def __call__(self, *args, **kwargs): pass
+	def __getattr__(self, item) -> _T.Any: pass
+
+mod: MOD
+
+class Ext:
+	def __getattr__(self, item) -> _T.Any: pass
+
+ext: Ext
 
 class PaneType(_E.Enum):
 	NETWORKEDITOR = 0
@@ -28,17 +36,15 @@ class PaneType(_E.Enum):
 	PARAMETERS = 0
 	TEXTPORT = 0
 
-ext = _Expando()  # type: _T.Any
-
 class UI:
 	clipboard: str
-	colors: _T.Any #td.Colors
+	colors: 'Colors'
 	dpiBiCubicFilter: bool
 	masterVolume: float
-	options: _T.Any #td.Options
+	options: 'Options'
 	panes: 'Panes'
 	performMode: bool
-	preferences: _T.Any #td.Preferences
+	preferences: 'Preferences'
 	redrawMainWindow: bool
 	rolloverOp: 'OP'
 	rolloverPar: 'Par'
@@ -81,11 +87,23 @@ class UI:
 
 	status: str
 
-class Panes:
-	def __getitem__(self, key) -> 'Pane': pass
-	def __iter__(self) -> _T.Iterator['Pane']: pass
-	def __len__(self) -> int: pass
-	def __next__(self) -> 'Pane': pass
+class Preferences(_T.Mapping[str, _T.Any], _ABC):
+	defaults: _T.Dict[str, _T.Any]
+
+	def save(self): pass
+	def resetToDefaults(self): pass
+	def load(self): pass
+
+class Options(_T.Mapping[str, _T.Any], _ABC):
+	def resetToDefaults(self): pass
+
+_RgbTupletT = _T.Tuple[float, float, float]
+
+class Colors(_T.Mapping[str, _RgbTupletT], _ABC):
+	def resetToDefaults(self): pass
+
+class Panes(_T.Iterable['Pane'], _T.Iterator['Pane'], _T.Sized):
+	def __getitem__(self, key: _T.Union[int, str]) -> 'Pane': pass
 	# noinspection PyShadowingBuiltins
 	def createFloating(
 			self,
@@ -97,7 +115,11 @@ class Panes:
 
 	current: 'Pane'
 
-Coords = _T.NamedTuple('Coords', [('x', int), ('y', int), ('u', float), ('v', float)])
+class Coords(_T.NamedTuple):
+	x: int
+	y: int
+	u: float
+	v: float
 
 class Pane:
 	def changeType(self, paneType: 'PaneType') -> 'Pane': pass
@@ -156,6 +178,13 @@ class Undo:
 	def undo(self): pass
 	def endBlock(self): pass
 
+class WindowStartMode(_E.Enum):
+	DEFAULT = 'DEFAULT'
+	FULL = 'FULL'
+	LEFT = 'LEFT'
+	RIGHT = 'RIGHT'
+	CUSTOM = 'CUSTOM'
+
 class Project:
 	name: str
 	folder: str
@@ -169,6 +198,28 @@ class Project:
 	realTime: bool
 	isPrivate: bool
 	isPrivateKey: bool
+	# cacheParameters: bool
+	externalToxModifiedInProject: bool
+	externalToxModifiedOnDisk: bool
+	windowOnTop: bool
+	windowStartMode: WindowStartMode
+	windowDraw: bool
+	windowStartCustomWidth: int
+	windowStartCustomHeight: int
+	windowStartCustomX: int
+	windowStartCustomY: int
+	performOnStart: bool
+	performWindowPath: 'OP'
+
+	def load(self, path: str) -> None: pass
+	def save(self, path: str, saveExternalToxs=False) -> bool: pass
+	def quit(self, force=False, crash=False) -> None: pass
+	def addPrivacy(self, key) -> bool: pass
+	def removePrivacy(self, key) -> bool: pass
+	def accessPrivateContents(self, key) -> bool: pass
+	def applyWindowSettings(self) -> None: pass
+	def stack(self) -> str: pass
+	def pythonStack(self) -> str: pass
 
 project: Project
 
@@ -216,7 +267,12 @@ class Monitors:
 monitors:  Monitors
 
 class SysInfo:
+	numCPUs: int
 	ram: float
+	numMonitors: int
+	xres: int
+	yres: int
+	tfs: str
 
 sysinfo: SysInfo
 
@@ -226,7 +282,7 @@ class _Parent:
 
 parent: _Parent
 
-class Channel:
+class Channel(_T.SupportsInt, _T.SupportsFloat):
 	valid: bool
 	index: int
 	name: str
@@ -319,23 +375,57 @@ class Par:
 _ParTupletT = _T.Union[
 	_T.Tuple['Par'], _T.Tuple['Par', 'Par'], _T.Tuple['Par', 'Par', 'Par'], _T.Tuple['Par', 'Par', 'Par', 'Par']]
 
+class ParCollection:
+	owner: 'OP'
+
+	def __getattr__(self, item) -> Par: pass
+	def __setattr__(self, key, value: _T.Any): pass
+	def __getitem__(self, item) -> Par: pass
+	def __setitem__(self, key, value: _T.Any): pass
+
 class Page:
 	name: str
 	owner: 'OP'
 	parTuplets: _T.List[_ParTupletT]
 	pars: _T.List['Par']
 	index: int
+	isCustom: bool
 
 	def _appendSized(self, name, label=None, size=1, order=None, replace=True) -> _ParTupletT: pass
 	def _appendBasic(self, name, label=None, order=None, replace=True) -> _ParTupletT: pass
 
-	appendInt = appendFloat = _appendSized
-	appendOP = appendCHOP = appendDAT = appendMAT = appendTOP = appendSOP = _appendBasic
-	appendCOMP = appendOBJ = appendPanelCOMP = _appendBasic
-	appendMenu = appendStr = appendStrMenu = _appendBasic
-	appendWH = appendRGBA = appendRGB = appendXY = appendXYZ = appendUV = appendUVW = _appendBasic
-	appendToggle = appendPython = appendFile = appendFolder = _appendBasic
-	appendPulse = appendMomentary = _appendBasic
+	appendInt = _appendSized
+	appendFloat = _appendSized
+
+	appendOP = _appendBasic
+	appendCHOP = _appendBasic
+	appendDAT = _appendBasic
+	appendMAT = _appendBasic
+	appendTOP = _appendBasic
+	appendSOP = _appendBasic
+	appendCOMP = _appendBasic
+	appendOBJ = _appendBasic
+	appendPanelCOMP = _appendBasic
+
+	appendMenu = _appendBasic
+	appendStr = _appendBasic
+	appendStrMenu = _appendBasic
+
+	appendWH = _appendBasic
+	appendRGBA = _appendBasic
+	appendRGB = _appendBasic
+	appendXY = _appendBasic
+	appendXYZ = _appendBasic
+	appendUV = _appendBasic
+	appendUVW = _appendBasic
+
+	appendToggle = _appendBasic
+	appendPython = _appendBasic
+	appendFile = _appendBasic
+	appendFolder = _appendBasic
+	appendPulse = _appendBasic
+	appendMomentary = _appendBasic
+	appendHeader = _appendBasic
 
 	def appendPar(self, name: str, par: 'Par' = None, label=None, order=None, replace=True) -> _ParTupletT: pass
 
@@ -354,7 +444,7 @@ class OP:
 	time: 'timeCOMP'
 	ext: _T.Any
 	mod: _T.Any
-	par: _T.Any
+	par: ParCollection
 	customPars: _T.List['Par']
 	customPages: _T.List['Page']
 	customTuplets: _T.List[_ParTupletT]
@@ -490,6 +580,22 @@ def ops(*paths) -> _T.List['_AnyOpT']: pass
 
 def var(name) -> str: pass
 
+class Run:
+	active: bool
+	group: str
+	isCell: bool
+	isDAT: bool
+	isString: bool
+	path: OP
+	remainingFrames: int
+	remainingMilliseconds: int
+	source: _T.Union['DAT', 'Cell', str]
+
+	def kill(self): pass
+
+class Runs(_T.List[Run]):
+	pass
+
 class td:
 	Monitor = Monitor
 	Monitors = Monitors
@@ -508,17 +614,16 @@ class td:
 	ipar: 'OP'
 	project: 'Project'
 	root: 'OP'
-	runs: _T.Any #runs
+	runs: Runs
 	sysinfo: 'SysInfo'
 	ui: 'UI'
 
 	@classmethod
-	def passive(cls, OP) -> 'OP': pass
+	def passive(cls, o) -> 'OP': pass
 	@classmethod
 	def run(
 			cls, script, *args, endFrame=False, fromOP: 'OP' = None, asParameter=False, group=None, delayFrames=0,
-			delayMilliSeconds=0, delayRef: 'OP' = None) -> _T.Any: #Run
-		pass
+			delayMilliSeconds=0, delayRef: 'OP' = None) -> Run: pass
 	@classmethod
 	def fetchStamp(cls, key, default) -> _T.Union[_ValueT, str]: pass
 	@classmethod
@@ -593,6 +698,31 @@ class _Vector:
 	def slerp(self, vec: '_Vector', t: float) -> '_Vector': pass
 	def project(self, vec1: '_Vector', vec2: '_Vector'): pass
 	def reflect(self, vec: '_Vector'): pass
+
+_OperableWithQuaternion = _T.Union['Quaternion', _T.Tuple[float, float, float, float], _Matrix]
+
+class Quaternion:
+	x: float
+	y: float
+	z: float
+	w: float
+
+	def lerp(self, q2: _OperableWithQuaternion, factor: float) -> 'Quaternion': pass
+	def length(self) -> float: pass
+	def cross(self, q2: _OperableWithQuaternion) -> _Vector: pass
+	def rotate(self, vec: _Vector) -> _Vector: pass
+	def slerp(self, q2: _OperableWithQuaternion, factor: float) -> 'Quaternion': pass
+	def eulerAngles(self, order='xyz') -> _T.Tuple[float, float, float]: pass
+	def fromEuler(self, order='xyz') -> _T.Tuple[float, float, float]: pass
+	def axis(self) -> _Vector: pass
+	def dot(self, q2: _OperableWithQuaternion) -> float: pass
+	def exp(self) -> 'Quaternion': pass
+	def copy(self) -> 'Quaternion': pass
+	def log(self) -> 'Quaternion': pass
+	def inverse(self) -> None: pass
+	def angle(self) -> float: pass
+
+	def __imul__(self, other: _OperableWithQuaternion) -> 'Quaternion': pass
 
 _OperableWithColor = _T.Union['_Color', _T.Tuple[float, float, float, float], _T.List[float], float]
 
@@ -887,7 +1017,15 @@ class COMP(OP):
 	def unsetVar(self, name: str): pass
 	def vars(self, *patterns: str) -> list: pass
 
-Panel = _T.Any
+class PanelValue(_T.SupportsFloat, _ABC):
+	name: str
+	owner: OP
+	val: float
+	valid: bool
+
+class Panel:
+	owner: OP
+	def __getitem__(self, item: str) -> PanelValue: pass
 
 class PanelCOMP(COMP):
 	panel: Panel
@@ -958,7 +1096,27 @@ class timeCOMP(COMP):
 
 _AnyCompT = _T.Union[COMP, PanelCOMP, windowCOMP, timeCOMP]
 
-_VFS = _T.Any
+class VFSFile:
+	name: str
+	size: int
+	date: _DT.datetime
+	virtualPath: str
+	originalFilePath: str
+	owner: OP
+	byteArray: bytearray
+
+	def destroy(self): pass
+	def export(self, folder: str) -> str: pass
+
+class VFS:
+	owner: OP
+
+	def __getitem__(self, item: str) -> VFSFile: pass
+	def addByteArray(self, byteArray: bytearray, name: str) -> VFSFile: pass
+	def addFile(self, filePath: str, overrideName=None) -> VFSFile: pass
+	def export(self, folder: str, pattern='*', overwrite=False) -> _T.List[str]: pass
+	def find(self, pattern='*') -> _T.List[VFSFile]: pass
+
 class Connector:
 	index: int
 	isInput: bool
@@ -1003,7 +1161,7 @@ class AttributeData(_AttributeDataTupleT):
 	owner: 'SOP'
 	val: _AttributeDataT
 
-class Point(_T.Any):
+class Point:
 	index: int
 	owner: 'SOP'
 	P: 'AttributeData'
@@ -1011,6 +1169,8 @@ class Point(_T.Any):
 	y: float
 	z: float
 
+	def __getattr__(self, item) -> _T.Any: pass
+	def __setattr__(self, key, value): pass
 	def destroy(self): pass
 
 class Points(_T.Sequence[Point], _ABC):
@@ -1063,8 +1223,19 @@ class Mesh(Prim, _ABC):
 	numRows: int
 	numCols: int
 
-class Prims(_T.Sequence[Prim], _ABC):
+_AnyPrimT = _T.Union[Prim, Poly, Bezier, Mesh]
+
+class Prims(_T.Sequence[_AnyPrimT], _ABC):
 	owner: 'SOP'
+
+class Group(_T.Union[_T.Iterable[Point], _T.Iterable[_AnyPrimT]]):
+	# default - tuple "the default values associated with this group" ?
+	name: str
+	owner: OP
+
+	def add(self, item: _T.Union[Point, Prim]): pass
+	def discard(self, item: _T.Union[Point, Prim]): pass
+	def destroy(self): pass
 
 class SOP(OP):
 	compare: bool
@@ -1076,12 +1247,14 @@ class SOP(OP):
 	pointAttribs: Attributes
 	primAttribs: Attributes
 	vertexAttribs: Attributes
+	pointGroups: _T.Dict[str, Group]
+	primGroups: _T.Dict[str, Group]
 	center: _Position
 	min: _Position
 	max: _Position
 	size: _Position
 
-	def save(self, filepath: str) -> str: pass
+	def save(self, filepath: str, createFolders=False) -> str: pass
 
 class scriptSOP(SOP):
 	def destroyCustomPars(self): pass
@@ -1165,6 +1338,29 @@ class timerCHOP(CHOP):
 	def goToPrevSegment(self): pass
 	def lastCycle(self): pass
 
+class Peer:
+	owner: OP
+	port: int
+	address: str
+	hostname: str
+
+	def close(self) -> bool: pass
+	def sendBytes(self, *messages) -> int: pass
+	def sendOSC(
+			self, address: str, *values, asBundle=False, useNonStandardTypes=True, use64BitPrecision=False) -> int: pass
+	def send(self, *messages: str, terminator='') -> int: pass
+
+class udpinDAT(DAT):
+	def sendBytes(self, *messages) -> int: pass
+	def sendOSC(
+			self, address: str, *values, asBundle=False, useNonStandardTypes=True, use64BitPrecision=False) -> int: pass
+	def send(self, *messages: str, terminator='') -> int: pass
+oscinDAT = udpinDAT
+udtinDAT = udpinDAT
+
+class tcpipDAT(DAT):
+	def sendBytes(self, *messages) -> int: pass
+	def send(self, *messages: str, terminator='') -> int: pass
 
 class App:
 	name: str
@@ -1191,6 +1387,127 @@ class RenderPickEvent(tuple):
 	normal: _Vector
 	depth: float
 	instanceId: int
+
+class Dongle:
+	serialNumber: int
+
+	def applyUpdate(self, update: str) -> None: pass
+	def createUpdateContext(self) -> str: pass
+
+class DongleList(_T.List[Dongle]):
+	def refreshDongles(self) -> None: pass
+	def encrypt(self, firmCode, productCode, data: _T.Union[str, bytearray]) -> bytearray: pass
+	def productCodeInstalled(self) -> bool: pass
+
+class License:
+	index: int
+	isEnabled: bool
+	isRemotelyDisabled: bool
+	key: str
+	remoteDisableDate: _T.Tuple[int, int, int]  # year, month, day
+	status: int
+	statusMessage: str
+	systemCode: str
+	type: str
+	updateExpiryDate: _T.Tuple[int, int, int]  # year, month, day
+	version: int
+
+class Licenses(_T.List[License]):
+	disablePro: bool
+	dongles: DongleList
+	machine: str
+	systemCode: str
+	type: str
+
+	def install(self, key: str) -> bool: pass
+
+class Bounds(_T.NamedTuple):
+	min: _T.Any
+	max: _T.Any
+	center: _T.Any
+	size: _T.Any
+
+class ArtNetDevice(_T.NamedTuple):
+	ip: bytes
+	port: int
+	version: int
+	netswitch: int
+	subswitch: int
+	oem: int
+	ubea: int
+	status1: int
+	estacode: int
+	shortname: int
+	longname: int
+	report: int
+	numports: int
+	porttypes: bytes
+	goodinputs: bytes
+	goodoutputs: bytes
+	swin: bytes
+	swout: bytes
+	swvideo: int
+	swmacro: int
+	swremote: int
+	style: int
+	mac: bytes
+	bindip: bytes
+	bindindex: int
+	status2: int
+
+class EtherDreamDevice(_T.NamedTuple):
+	ip: _T.Any
+	port: _T.Any
+	mac_address: _T.Any
+	hw_revision: _T.Any
+	sw_revision: _T.Any
+	buffer_capacity: _T.Any
+	max_point_rate: _T.Any
+	protocol: _T.Any
+	light_engine_state: _T.Any
+	playback_state: _T.Any
+	source: _T.Any
+	light_engine_flags: _T.Any
+	playback_flags: _T.Any
+	source_flags: _T.Any
+	buffer_fullness: _T.Any
+	point_rate: _T.Any
+	point_count: _T.Any
+
+class NDISource(_T.NamedTuple):
+	sourceName: _T.Any
+	url: _T.Any
+	streaming: _T.Any
+	width: _T.Any
+	height: _T.Any
+	fps: _T.Any
+	audioSampleRate: _T.Any
+	numAudioChannels: _T.Any
+
+class Body:
+	index: int
+	owner: OP
+	rotate: _Vector
+	translate: _Position
+	angularVelocity: _Vector
+	linearVelocity: _Vector
+
+	def applyImpulseForce(self, force, relPos: _T.Union[_Position, _Vector, _T.Tuple[float, float, float]] = None): pass
+	def applyTorque(self, torque): pass
+	def applyImpulseTorque(self, torque): pass
+	def applyForce(self, force, relPos: _T.Union[_Position, _Vector, _T.Tuple[float, float, float]] = None): pass
+
+class Bodies(_T.List[Body]):
+	pass
+
+class actorCOMP(COMP):
+	bodies: Bodies
+
+class Actors(_T.List[actorCOMP]):
+	pass
+
+class bulletsolverCOMP(COMP):
+	actors: Actors
 
 def debug(*args):
 	pass
