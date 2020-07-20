@@ -1001,7 +1001,7 @@ class COMP(OP):
 	def collapseSelected(self): pass
 	def copyOPs(self, listOfOPs: _T.List['_AnyOpT']) -> _T.List['_AnyOpT']: pass
 	def initializeExtensions(self, index: int = None) -> _T.Any: pass
-	def loadTox(self, filepath: str, unwired=False, pattern: str = None, password: str = None) -> 'OP': pass
+	def loadTox(self, filepath: str, unwired=False, pattern: str = None, password: str = None) -> 'COMP': pass
 	def resetNetworkView(self, recurse: bool = False): pass
 	def save(self, filepath: str, createFolders: bool = False, password: str = None) -> 'str': pass
 	def saveExternalTox(self, recruse: bool = False, password: str = None) -> int: pass
