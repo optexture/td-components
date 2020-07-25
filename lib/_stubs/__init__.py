@@ -935,6 +935,8 @@ class oscoutDAT(DAT):
 
 	def send(self, *messages: str, terminator='') -> int: pass
 
+oscinDAT = oscoutDAT
+
 class CHOP(OP):
 	numChans: int
 	numSamples: int
