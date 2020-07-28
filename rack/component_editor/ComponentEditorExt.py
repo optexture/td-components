@@ -7,6 +7,7 @@ if False:
 	from typing import Any
 	iop.hostedComp = COMP()
 	ipar.compEditor = Any()
+	ipar.workspace = Any()
 
 class ComponentEditor:
 	def __init__(self, ownerComp):
@@ -46,10 +47,11 @@ class ComponentEditor:
 		msg = f'Saved component to {tox}'
 		print(msg)
 		ui.status = msg
-		img = ipar.compEditor.Thumbfile.eval()
-		if not img:
-			img = re.sub(r'\.tox$', '.png', tox)
-		self.ownerComp.op('video_output').save(img)
+		if ipar.workspace.Savethumbnails:
+			img = ipar.compEditor.Thumbfile.eval()
+			if not img:
+				img = re.sub(r'\.tox$', '.png', tox)
+			self.ownerComp.op('video_output').save(img)
 
 	@staticmethod
 	def CustomizeComponent():
