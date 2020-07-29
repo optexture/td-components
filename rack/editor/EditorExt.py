@@ -167,7 +167,10 @@ class Editor:
 			self.LoadComponent(tox, thumb)
 
 	def queueMethodCall(self, method: str, *args):
-		run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5, delayRef=root)
+		if '.' in method:
+			run(method, *args, delayFrames=5, delayRef=root)
+		else:
+			run(f'args[0].{method}(*(args[1:]))', self, *args, delayFrames=5, delayRef=root)
 
 	def showStatusMessage(self, message: str, static=False):
 		print(self.ownerComp, 'STATUS', message)
