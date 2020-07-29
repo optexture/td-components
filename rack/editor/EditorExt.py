@@ -41,6 +41,18 @@ class Editor:
 	def hasComponent():
 		return ipar.editorState.Hascomponent.eval()
 
+	@property
+	def Workspace(self) -> 'Workspace':
+		return iop.workspace
+
+	@property
+	def HostedComponent(self) -> 'COMP':
+		return iop.hostedComp
+
+	@property
+	def StatusOverlay(self) -> 'StatusOverlay':
+		return iop.statusOverlay
+
 	def getLeftTabSet(self):
 		return UITabSet(
 			tabs=[
