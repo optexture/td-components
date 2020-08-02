@@ -302,16 +302,17 @@ class Editor:
 		if stage == 0:
 			if tox:
 				ipar.editorState.Toxfile.val = tox
-				if thumb:
+				if thumb and ipar.workspace.Savethumbnail:
 					ipar.editorState.Thumbfile.val = thumb
 			else:
 				tox = ipar.editorState.Toxfile.eval()
 				if not tox:
 					return
-				if thumb:
-					ipar.editorState.Thumbfile.val = thumb
-				else:
-					thumb = ipar.editorState.Thumbfile.eval()
+				if ipar.workspace.Savethumbnail:
+					if thumb:
+						ipar.editorState.Thumbfile.val = thumb
+					else:
+						thumb = ipar.editorState.Thumbfile.eval()
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 1:
 			expandedPath = Path(tdu.expandPath(tox))
@@ -324,13 +325,14 @@ class Editor:
 			self.updateComponentProperties(tox, thumb)
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 3:
-			thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
-			if thumbSource:
-				if not thumb:
-					expandedPath = Path(tdu.expandPath(tox))
-					thumb = expandedPath.with_suffix('.png')
-					ipar.editorState.Thumbfile = thumb
-				thumbSource.save(thumb)
+			if ipar.workspace.Savethumbnail:
+				thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
+				if thumbSource:
+					if not thumb:
+						expandedPath = Path(tdu.expandPath(tox))
+						thumb = expandedPath.with_suffix('.png')
+						ipar.editorState.Thumbfile = thumb
+					thumbSource.save(thumb)
 
 	def updateComponentProperties(self, tox: Optional[str], thumb: Optional[str]):
 		self.showStatusMessage('Updating component properties')
