@@ -1276,6 +1276,41 @@ class TOP(OP):
 
 	def save(self, path): pass
 
+class textTOP(TOP):
+	curText: str
+	cursorEnd: int
+	cursorStart: int
+	selectedText: str
+	textHeight: int
+	textWidth: int
+	numLines: int
+	ascender: float
+	descender: float
+	capHeight: float
+	xHeight: float
+	lineGap: float
+
+	def fontSupportsCharts(self, s: str) -> bool: pass
+	def evalTextSize(self, s: str) -> _T.Tuple[float, float]: pass
+	def lines(self) -> _T.List['TextLine']: pass
+
+class textSOP(SOP):
+	numLines: int
+	ascender: float
+	descender: float
+	capHeight: float
+	xHeight: float
+	lineGap: float
+	numGlyphs: int
+
+	def fontSupportsCharts(self, s: str) -> bool: pass
+	def lines(self) -> _T.List['TextLine']: pass
+
+class TextLine:
+	text: str
+	origin: 'tdu.Position'
+	lineWidth: float
+
 class MAT(OP): pass
 
 _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, MAT, '_AnyCompT']
@@ -1284,9 +1319,12 @@ baseCOMP = COMP
 panelCOMP = PanelCOMP
 evaluateDAT = mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
-animationCOMP = COMP
 inTOP = outTOP = TOP
 importselectSOP = SOP
+
+class animationCOMP(COMP):
+	def setKeyframe(self, position: float, channel='*', value=None, function: str = None): pass
+	def deleteKeyframe(self, position: float, channel='*', value=None, function: str = None): pass
 
 class objectCOMP(COMP):
 	localTransform: _Matrix
