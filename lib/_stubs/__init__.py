@@ -810,6 +810,7 @@ class tdu:
 	@staticmethod
 	def digits(s: str) -> _T.Optional[int]: pass
 
+	ArcBall = _ArcBall
 	Dependency = _Dependency
 	Position = _Position
 	Vector = _Vector
@@ -822,15 +823,16 @@ class tdu:
 	def split(string, eval=False) -> _T.List[str]: pass
 
 	@staticmethod
+	def expand(pattern: str) -> _T.List[str]: pass
+
+	@staticmethod
 	def match(pattern, inputList, caseSensitive=True) -> _T.List[str]: pass
 
 	@staticmethod
-	def collapsePath(path: str) -> str: pass
+	def collapsePath(path: str, asExpression=False) -> str: pass
 
 	@staticmethod
 	def expandPath(path: str) -> str: pass
-
-	ArcBall = _ArcBall
 
 	fileTypes = {
 		'audio': ['aif', 'aiff', 'flac', 'm4a', 'mp3', 'ogg', 'wav'],

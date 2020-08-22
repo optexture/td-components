@@ -31,6 +31,7 @@ class Editor:
 	def __init__(self, ownerComp):
 		self.ownerComp = ownerComp  # type: COMP
 		self.loadComponentMessageId = None
+		self.isLoadingComponent = False
 
 	def hasExposedSubComponents(self):
 		if not ipar.workspace.Exposesubcomps or not self.hasComponent():
@@ -201,6 +202,10 @@ class Editor:
 			self,
 			tox: Optional[str], thumb: Optional[str] = None,
 			thenRun: str = None, runArgs: list = None):
+		if self.isLoadingComponent:
+			print(self.ownerComp, 'WARNING Ignoring attempt to load while a load is in progress already. tox: ', tox)
+			return
+		self.isLoadingComponent = True
 		if not tox:
 			self.loadComponentMessageId = self.showStatusMessage('Unloading component...')
 			self.queueMethodCall('unloadComponent_stage', 0, thenRun, runArgs)
@@ -237,6 +242,7 @@ class Editor:
 				self.queueMethodCall(thenRun, *(runArgs or []))
 			self.clearStatusMessage(self.loadComponentMessageId)
 			self.loadComponentMessageId = None
+			self.isLoadingComponent = False
 
 	def unloadComponent_stage(
 			self, stage: int,
@@ -283,6 +289,7 @@ class Editor:
 				self.queueMethodCall(thenRun, *(runArgs or []))
 			self.clearStatusMessage(self.loadComponentMessageId)
 			self.loadComponentMessageId = None
+			self.isLoadingComponent = False
 
 	def updateUIAfterComponentLoad(self):
 		self.showStatusMessage('Updating UI after component change')
