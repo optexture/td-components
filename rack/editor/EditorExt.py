@@ -306,16 +306,17 @@ class Editor:
 	def saveComponent_stage(self, stage: int, tox: str = None, thumb: str = None):
 		print(self.ownerComp, 'saveComponent stage', stage)
 		comp = iop.hostedComp
+		saveThumb = getattr(ipar.workspace, 'Savethumbnail', True)
 		if stage == 0:
 			if tox:
 				ipar.editorState.Toxfile.val = tox
-				if thumb and ipar.workspace.Savethumbnail:
+				if thumb and saveThumb:
 					ipar.editorState.Thumbfile.val = thumb
 			else:
 				tox = ipar.editorState.Toxfile.eval()
 				if not tox:
 					return
-				if ipar.workspace.Savethumbnail:
+				if saveThumb:
 					if thumb:
 						ipar.editorState.Thumbfile.val = thumb
 					else:
@@ -332,7 +333,7 @@ class Editor:
 			self.updateComponentProperties(tox, thumb)
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 3:
-			if ipar.workspace.Savethumbnail:
+			if saveThumb:
 				thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
 				if thumbSource:
 					if not thumb:
