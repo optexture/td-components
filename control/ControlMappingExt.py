@@ -214,7 +214,7 @@ def _AddToMapTable(
 			high = ''
 			parName = ''
 		else:
-			if not (par.isNumber or par.isToggle or par.isMenu):
+			if not (par.isNumber or par.isToggle or par.isMenu or par.isPulse):
 				continue
 			parName = par.name
 			isPulse = par.isPulse or par.isMomentary
