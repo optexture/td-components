@@ -244,7 +244,7 @@ class Monitor:
 	scaledBottom: int
 	refreshRate: float
 
-class Monitors:
+class Monitors(_ABC, _T.Sequence[Monitor]):
 	primary: Monitor
 	width: 0
 	height: 0
@@ -260,9 +260,6 @@ class Monitors:
 	@staticmethod
 	def refresh():
 		pass
-
-	def __len__(self):
-		return 0
 
 monitors:  Monitors
 
@@ -558,7 +555,7 @@ class OP:
 	def fetch(self, key, default=None, search=True, storeDefault=False): pass
 	def fetchOwner(self, key) -> '_AnyOpT': pass
 
-	def addScriptErrors(self, msg): pass
+	def addScriptError(self, msg): pass
 	def addError(self, msg): pass
 	def addWarning(self, msg): pass
 	def errors(self, recurse=False) -> str: pass
@@ -1066,6 +1063,96 @@ class PanelCOMP(COMP):
 	def locateMouseUV(self) -> _T.Tuple[float, float]: pass
 	def setFocus(self, moveMouse=False): pass
 
+class fieldCOMP(PanelCOMP):
+	def setKeyboardFocus(self, selectAll=False): pass
+
+class buttonCOMP(PanelCOMP):
+	def click(self, val, clickCount=1, force=False, left=False, middle=False, right=False): pass
+
+class sliderCOMP(PanelCOMP):
+	def click(self, uOrV, v, clickCount=1, force=False, left=False, middle=False, right=False, vOnly=False): pass
+
+class containerCOMP(PanelCOMP):
+	def click(self, u, v, clickCount=1, force=False, left=False, middle=False, right=False, group=None): pass
+	def clickChild(self, childIndex, clickCount=1, force=False, left=False, middle=False, right=False, group=None): pass
+
+widgetCOMP = containerCOMP
+
+class listCOMP(PanelCOMP):
+	attribs: 'ListAttributes'
+	cellAttribs: 'ListAttributes'
+	colAttribs: 'ListAttributes'
+	focusCol: int
+	focusRow: int
+	radioCol: int
+	radioRow: int
+	rolloverCol: int
+	rolloverRow: int
+	rowAttribs: 'ListAttributes'
+	selectCol: int
+	selectRow: int
+	selectionBorderColor: _Color
+	selectionColor: _Color
+	selections: _T.List[_T.Tuple[int, int, int, int]]  # [(startrow, startcol, endrow, endcol), ...]
+
+	def scroll(self, row, col): pass
+	def setKeyboardFocus(self, row, col, selectAll=False): pass
+
+class opviewerCOMP(PanelCOMP):
+	def isViewable(self, path: str) -> bool: pass
+
+class parameterCOMP(PanelCOMP):
+	minWidth: int
+
+class selectCOMP(PanelCOMP):
+	pass
+
+# noinspection PyShadowingBuiltins
+class tableCOMP(PanelCOMP):
+	def getRowFromID(self, id) -> int: pass
+	def getColFromID(self, id) -> int: pass
+	def click(self, row, col, clickCount=1, force=False, left=False, middle=False, right=False): pass
+	def clickID(self, id, clickCount=1, force=False, left=False, middle=False, right=False): pass
+	def getCellID(self, row, col) -> int: pass
+	def setKeyboardFocus(self, row, col, selectAll=False): pass
+
+class ListAttributes:
+	bgColor: _Color
+	bottomBorderInColor: _Color
+	bottomBorderOutColor: _Color
+	colStretch: bool
+	colWidth: float
+	draggable: bool
+	editable: bool
+	focus: bool
+	fontBold: bool
+	fontFace: str
+	fontItalic: bool
+	fontSizeX: float
+	fontSizeY: float
+	sizeInPoints: bool
+	help: str
+	leftBorderInColor: _Color
+	leftBorderOutColor: _Color
+	radio: bool
+	rightBorderInColor: _Color
+	rightBorderOutColor: _Color
+	rollover: bool
+	rowHeight: float
+	rowIndent: float
+	rowStretch: bool
+	select: bool
+	text: str
+	textColor: _Color
+	textJustify: 'JustifyType'
+	textOffsetX: float
+	textOffsetY: float
+	top: 'TOP'
+
+	topBorderInColor: _Color
+	topBorderOutColor: _Color
+	wordWrap: bool
+
 class windowCOMP(COMP):
 	scalingMonitorIndex: int
 	isBorders: bool
@@ -1098,7 +1185,11 @@ class timeCOMP(COMP):
 	signature1: int
 	signature2: int
 
-_AnyCompT = _T.Union[COMP, PanelCOMP, windowCOMP, timeCOMP]
+_AnyPanelCompT = _T.Union[
+	PanelCOMP, fieldCOMP, buttonCOMP, sliderCOMP, containerCOMP, widgetCOMP, listCOMP,
+	opviewerCOMP, parameterCOMP, selectCOMP, tableCOMP]
+
+_AnyCompT = _T.Union[COMP, _AnyPanelCompT, windowCOMP, timeCOMP]
 
 class VFSFile:
 	name: str
