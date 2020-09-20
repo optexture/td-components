@@ -1366,8 +1366,22 @@ class scriptSOP(SOP):
 class TOP(OP):
 	width: int
 	height: int
+	aspect: float
+	aspectWidth: float
+	aspectHeight: float
+	depth: int
+	gpuMemory: int
+	curPass: int
 
-	def save(self, path): pass
+	def sample(self, x, y, u, v) -> _Color: pass
+	def numpyArray(self, delayed=False, writable=False) -> 'numpy.array': pass
+	def save(self, filepath, asynchronous=False, createFolders=False) -> 'str': pass
+	def saveByteArray(self, filetype) -> bytearray: pass
+	def cudaMemory(self) -> 'CUDAMemory': pass
+
+class CUDAMemory:
+	ptr: _T.Any
+	size: int
 
 class textTOP(TOP):
 	curText: str
