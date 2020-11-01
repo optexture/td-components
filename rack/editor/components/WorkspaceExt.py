@@ -46,6 +46,13 @@ class Workspace(SettingsExtBase):
 			folderPath / 'workspace.json',
 			folderPath)
 
+	def OpenWorkspace(self, fileOrFolder: str):
+		path = Path(fileOrFolder)
+		if path.is_dir():
+			self.LoadWorkspaceFolder(path)
+		else:
+			self.LoadWorkspaceFile(path)
+
 	def workspaceSettingsOp(self):
 		return SettingsOp('workspace', op=self.ownerComp, pages=['Settings'])
 

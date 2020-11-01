@@ -54,6 +54,12 @@ class Editor:
 	def StatusOverlay(self) -> 'StatusOverlay':
 		return iop.statusOverlay
 
+	def OpenWorkspace(self, fileOrFolder: str):
+		self.Workspace.OpenWorkspace(fileOrFolder)
+
+	def CloseWorkspace(self):
+		self.Workspace.UnloadWorkspace()
+
 	def getLeftTabSet(self):
 		return UITabSet(
 			tabs=[
