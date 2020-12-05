@@ -824,3 +824,37 @@ def changeParStyle(p, style, size=1, includeValueData=True):
 										   replace=True, setValues=True,
 										   ignoreAttrErrors=True)
 	return pars
+
+def multiMatch(patterns, inputList, caseSensitive=True, useMinus=True):
+	"""
+	Return a subset of inputList that match patterns, similar to what you would
+	put in a pattern matching parameter.
+	
+	Args:
+		patterns: space separate list of pattern-match strings to check
+		inputList: list of strings to check
+		caseSensitive: True to check case
+		useMinus: if True, allow "-" to precede an entry in patterns to exclude
+			from results anything that matches the entry. If False, ignore any
+			pattern preceded by "-"
+
+	Returns:
+		list that is a subset of inputList
+	"""
+	patternSet = set(tdu.split(patterns))
+	minusSet = {p for p in patternSet if p.startswith('-')}
+	patternSet -= minusSet
+	yesSet = set()
+	for pattern in patternSet:
+		yesSet |= set(tdu.match(pattern, inputList))
+		if len(yesSet) == len(inputList):
+			break
+	if useMinus:
+		noSet = set()
+		for pattern in minusSet:
+			noSet |= set(tdu.match(pattern[1:], inputList))
+			if len(noSet) == len(inputList):
+				break
+		yesSet -= noSet
+	return [item for item in inputList if item in yesSet]
+		

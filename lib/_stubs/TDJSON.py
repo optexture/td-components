@@ -17,6 +17,7 @@
 
 import json
 import collections
+import types
 
 NUMATTRS = ('min', 'max', 'normMin', 'normMax', 'clampMin', 'clampMax')
 LISTATTRS = NUMATTRS + ('default', 'val', 'eval', 'expr', 'mode',
@@ -161,7 +162,15 @@ def parameterToJSONPar(p, extraAttrs=None, forceAttrLists=False):
 	parAttrs = ('name', 'label', 'page', 'style', 'size', 'default', 'enable',
 				'startSection', 'cloneImmune', 'readOnly', 'enableExpr')
 	if extraAttrs == '*':
-		extraAttrs = [m for m in dir(p) if not m.startswith('_')]
+		extraAttrs = []
+		for m in dir(p):
+			try:
+				if not m.startswith('_') and not isinstance(getattr(p, m),
+						(types.FrameType, types.BuiltinFunctionType,
+						types.MethodType, types.BuiltinMethodType)):
+					extraAttrs.append(m)
+			except:
+				pass		
 	numAttrs = NUMATTRS
 
 	# set up special par types
