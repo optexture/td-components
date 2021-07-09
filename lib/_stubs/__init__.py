@@ -313,7 +313,7 @@ class Par:
 	exportOP: _T.Optional['OP']
 	exportSource: _T.Optional[_T.Union['Cell', 'Channel']]
 	bindExpr: str
-	bindMaster: _T.Optional['OP']
+	bindMaster: _T.Optional[_T.Union['Channel', 'Cell', 'Par']]
 	bindReferences: list
 	index: int
 	vecIndex: int
@@ -334,6 +334,7 @@ class Par:
 	normMax: float
 	normVal: float
 	enable: bool
+	enableExpr: str
 	order: int
 	page: 'Page'
 	password: bool
@@ -371,7 +372,7 @@ class Par:
 	def evalExpression(self) -> _ValueT: pass
 	def evalExport(self) -> _ValueT: pass
 	def evalOPs(self) -> '_T.List[_AnyOpT]': pass
-	def pulse(self, value, frames=0, seconds=0) -> None: pass
+	def pulse(self, value=None, frames=0, seconds=0) -> None: pass
 	def destroy(self) -> None: pass
 
 	def __int__(self) -> int: pass
@@ -985,6 +986,7 @@ class DAT(OP):
 	def run(
 			self, *args, endFrame=False, fromOP: 'OP' = None, asParameter=False, group=None, delayFrames=0,
 			delayMilliSeconds=0, delayRef: 'OP' = None) -> Run: pass
+	def save(self, filepath: str = None, append=False, createFolders=False) -> str: pass
 	module: 'MOD'
 	numRows: int
 	numCols: int
@@ -1077,7 +1079,7 @@ class COMP(OP):
 			onlyNonDefaults: bool = False,
 			key: _T.Callable[['_AnyOpT'], bool] = None,
 	) -> '_T.List[_AnyOpT]': pass
-	def copy(self, o: '_AnyOpT', name=None) -> 'op': pass
+	def copy(self, o: '_AnyOpT', name: str = None, includeDocked=True) -> 'op': pass
 	def create(self, OPtype: _T.Union[str, _T.Type['_AnyOpT']], name: _T.Optional[str] = None, initialize=True) -> '_AnyOpT': pass
 	def collapseSelected(self): pass
 	def copyOPs(self, listOfOPs: _T.List['_AnyOpT']) -> _T.List['_AnyOpT']: pass
@@ -1101,7 +1103,7 @@ class COMP(OP):
 class PanelValue(_T.SupportsFloat, _ABC):
 	name: str
 	owner: OP
-	val: float
+	val: _T.Union[float, int, str]
 	valid: bool
 
 class Panel:
@@ -1160,15 +1162,15 @@ widgetCOMP = containerCOMP
 
 class listCOMP(PanelCOMP):
 	attribs: 'ListAttributes'
-	cellAttribs: 'ListAttributes'
-	colAttribs: 'ListAttributes'
+	cellAttribs: '_ListAttributesGrid'
+	colAttribs: '_ListAttributesList'
 	focusCol: int
 	focusRow: int
 	radioCol: int
 	radioRow: int
 	rolloverCol: int
 	rolloverRow: int
-	rowAttribs: 'ListAttributes'
+	rowAttribs: '_ListAttributesList'
 	selectCol: int
 	selectRow: int
 	selectionBorderColor: _Color
@@ -1177,6 +1179,13 @@ class listCOMP(PanelCOMP):
 
 	def scroll(self, row, col): pass
 	def setKeyboardFocus(self, row, col, selectAll=False): pass
+
+# used for listCOMP callbacks
+class XYUVTuple(_T.NamedTuple):
+	x: float
+	y: float
+	u: float
+	v: float
 
 class opviewerCOMP(PanelCOMP):
 	def isViewable(self, path: str) -> bool: pass
@@ -1232,6 +1241,13 @@ class ListAttributes:
 	topBorderInColor: _Color
 	topBorderOutColor: _Color
 	wordWrap: bool
+
+class _ListAttributesList(_T.Sized, _ABC):
+	def __getitem__(self, item: int) -> _T.Optional[ListAttributes]:
+		pass
+class _ListAttributesGrid(_T.Sized, _ABC):
+	def __getitem__(self, rowCol: _T.Tuple[int, int]) -> _T.Optional[ListAttributes]:
+		pass
 
 class windowCOMP(COMP):
 	scalingMonitorIndex: int
@@ -1476,6 +1492,35 @@ class glslTOP(TOP):
 
 glslmultiTOP = glslTOP
 
+class webrenderTOP(TOP):
+	def sendKey(self, char: _T.Union[str, int], shift=False, alt=False, ctrl=False, cmd=False): pass
+	def interactMouse(
+			self,
+			u: float, v: float,
+			leftClick=0, middleClick=0, rightClick=0,
+			left=False, middle=False, right=False,
+			wheel=0,
+			pixels=False,
+			aux=None,
+	):
+		"""
+		:param u: pos
+		:param v:
+		:param leftClick: number of left clicks
+		:param middleClick: number of middle clicks
+		:param rightClick: number of right clicks
+		:param left: left button state
+		:param middle: middle button state
+		:param right: right button state
+		:param wheel: mouse wheel
+		:param pixels: treat coords as pixel offsets instead of normalized
+		:param aux: auxilliary data
+		:return:
+		"""
+		pass
+	def executeJavaScript(self, script: str): pass
+	def sendString(self, char: str): pass
+
 class textTOP(TOP):
 	curText: str
 	cursorEnd: int
@@ -1493,6 +1538,14 @@ class textTOP(TOP):
 	def fontSupportsCharts(self, s: str) -> bool: pass
 	def evalTextSize(self, s: str) -> _T.Tuple[float, float]: pass
 	def lines(self) -> _T.List['TextLine']: pass
+
+class scriptTOP(TOP):
+	def copyNumpyArray(self, arr: numpy.array) -> None: pass
+	def copyCUDAMemory(self, address, size, shape: CUDAMemoryShape) -> None: pass
+	def loadByteArray(self, fileType: str, byteArray: _T.Union[bytes, bytearray]) -> bool: pass
+	def destroyCustomPars(self): pass
+	def sortCustomPages(self, *pages): pass
+	def appendCustomPage(self, name: str) -> 'Page': pass
 
 class textSOP(SOP):
 	numLines: int
@@ -1518,7 +1571,7 @@ _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, TOP, MAT, '_AnyCompT']
 
 baseCOMP = COMP
 panelCOMP = PanelCOMP
-mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
+mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = inDAT = outDAT = infoDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
 inTOP = outTOP = TOP
 importselectSOP = SOP
@@ -1604,14 +1657,26 @@ class tcpipDAT(DAT):
 	def send(self, *messages: str, terminator='') -> int: pass
 
 class App:
-	name: str
+	architecture: str
+	binFolder: str
 	build: str
-	launchTime: str
-	product: str
-	version: str
+	compileDate: _T.Tuple[int, int, int]  # year, month, day
+	configFolder: str
+	desktopFolder: str
+	enableOptimizedExprs: bool
+	installFolder: str
+	launchTime: float  # seconds since launch
+	logExtensionCompiles: bool
 	osName: str
 	osVersion: str
+	power: bool
+	preferencesFolder: str
+	product: str
+	recentFiles: _T.List[str]
+	samplesFolder: str
 	userPaletteFolder: str
+	version: str
+	windowColorBits: int
 
 app: App
 
