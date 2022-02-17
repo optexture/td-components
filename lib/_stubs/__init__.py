@@ -1033,6 +1033,25 @@ class oscoutDAT(DAT):
 
 oscinDAT = oscoutDAT
 
+class webclientDAT(DAT):
+	def request(
+			self,
+			url: str,
+			method: str,
+			header: dict = None,
+			data=None,
+			pars: dict = None,
+			authType: str = None,
+			username: str = None,
+			password: str = None,
+			appKey: str = None,
+			appSecret: str = None,
+			oauth1Token: str = None,
+			oauth1Secret: str = None,
+			oauth2Token: str = None,
+			uploadFile: str = None,
+	) -> None: pass
+
 class CHOP(OP):
 	numChans: int
 	numSamples: int
