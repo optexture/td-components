@@ -1680,7 +1680,7 @@ class TextLine:
 class MAT(OP):
 	pass
 
-_AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, TOP, MAT, '_AnyCompT']
+_AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, TOP, MAT, '_AnyCompT', '_AnyDatT']
 
 baseCOMP = COMP
 panelCOMP = PanelCOMP
@@ -1768,6 +1768,8 @@ udtinDAT = udpinDAT
 class tcpipDAT(DAT):
 	def sendBytes(self, *messages) -> int: pass
 	def send(self, *messages: str, terminator='') -> int: pass
+
+_AnyDatT = _T.Union[DAT, tcpipDAT, udpinDAT, oscoutDAT, oscinDAT, evaluateDAT, webclientDAT]
 
 class App:
 	architecture: str
