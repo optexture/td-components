@@ -59,7 +59,7 @@ class UI:
 
 	def copyOPs(self, listOfOPs: _T.List['_AnyOpT']): pass
 	# noinspection PyShadowingNames
-	def pasteOPs(self, COMP, x: _T.Optional[int] = None, y: _T.Optional[int] = None): pass
+	def pasteOPs(self, comp: 'COMP', x: _T.Optional[int] = None, y: _T.Optional[int] = None): pass
 	# noinspection PyDefaultArgument
 	def messageBox(self, title: str, message: str, buttons: _T.List[str] = ['Ok']) -> int: pass
 	def refresh(self): pass
@@ -319,14 +319,17 @@ class Par:
 	exportSource: _T.Optional[_T.Union['Cell', 'Channel']]
 	bindExpr: str
 	bindMaster: _T.Optional[_T.Union['Channel', 'Cell', 'Par']]
+	bindRange: bool
 	bindReferences: list
 	index: int
 	vecIndex: int
 	name: str
 	label: str
+	subLabel: str
 
 	startSection: bool
 	readOnly: bool
+	displayOnly: bool
 	tuplet: 'ParTupletT'
 	tupletName: str
 	min: _ValueT
@@ -351,7 +354,13 @@ class Par:
 	menuLabels: _T.List[str]
 	menuIndex: int
 	menuSource: str
-	owner: 'OP'
+	owner: '_AnyOpT'
+	styleCloneImmune: bool
+	lastScriptChange: _T.Optional['SetInfo']
+
+	collapser: bool
+	collapsable: bool
+	sequence: _T.Set
 
 	isDefault: bool
 	isCustom: bool
@@ -383,6 +392,26 @@ class Par:
 	def __int__(self) -> int: pass
 	def __float__(self) -> float: pass
 	def __str__(self) -> str: pass
+
+class ParGroup(tuple):
+	bindExpr: tuple
+	bindMaster: tuple
+	bindRange: bool
+	bindReferences: _T.List[tuple]
+	clampMin: tuple
+	clampMax: tuple
+	collapser: bool
+	collapsable: bool
+	default: tuple
+	defaultExpr: tuple
+
+class SetInfo(tuple):
+	dat: _T.Optional['DAT']
+	path: str
+	function: _T.Optional[str]
+	line: _T.Optional[int]
+	frame: int
+	timeStamp: int
 
 class Sequence:
 	owner: 'OP'
@@ -512,6 +541,7 @@ class OP:
 	customPars: _T.List['Par']
 	customPages: _T.List['Page']
 	customTuplets: _T.List[ParTupletT]
+	builtInPars: _T.List[Par]
 	replicator: _T.Optional['OP']
 	storage: _T.Dict[str, _T.Any]
 	tags: _T.Set[str]
@@ -521,6 +551,7 @@ class OP:
 	parent: '_Parent'
 	iop: _T.Any
 	ipar: _T.Any
+	currentPage: 'Page'
 
 	activeViewer: bool
 	allowCooking: bool
@@ -865,6 +896,10 @@ class _Dependency:
 
 	def modified(self): pass
 
+	callbacks: _T.List[_T.Callable[[dict], None]]
+	ops: _T.List['_AnyOpT']
+	listAttributes: '_ListAttributesList'
+
 class tdu:
 	@staticmethod
 	def legalName(s: str) -> str: pass
@@ -911,6 +946,12 @@ class tdu:
 
 	@staticmethod
 	def expandPath(path: str) -> str: pass
+
+	@staticmethod
+	def tryExcept(func1: _T.Callable[[], _T.Any], func2OrValue: _T.Union[_T.Callable[[], _T.Any], _T.Any]) -> _T.Any: pass
+
+	@staticmethod
+	def forceCrash(): pass
 
 	fileTypes = {
 		'audio': ['aif', 'aiff', 'flac', 'm4a', 'mp3', 'ogg', 'wav'],
@@ -1134,6 +1175,25 @@ class COMP(OP):
 	def setVar(self, name: str, value): pass
 	def unsetVar(self, name: str): pass
 	def vars(self, *patterns: str) -> list: pass
+
+class annotateCOMP(COMP):
+	enclosedOPs: _T.List['_AnyOpT']
+	height: float
+	utility: bool
+	width: float
+	x: float
+	y: float
+
+class textCOMP(COMP):
+	editText: str
+	selectedText: str
+	textHeight: float
+	textWidth: float
+
+	def evalTextSize(self) -> _T.Tuple[float, float]: pass
+	def formatText(self, text: str, editing=False) -> str: pass
+	def setCursorPosUV(self, u: float, v: float): pass
+	def setKeyboardFocus(self, selectAll=False): pass
 
 class PanelValue(_T.SupportsFloat, _T.SupportsInt, _ABC):
 	name: str
@@ -1684,9 +1744,10 @@ _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, TOP, MAT, '_AnyCompT', '_AnyDatT']
 
 baseCOMP = COMP
 panelCOMP = PanelCOMP
-mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = inDAT = outDAT = infoDAT = DAT
+mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
+inDAT = outDAT = infoDAT = substituteDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
-inTOP = outTOP = TOP
+inTOP = outTOP = nullTOP = TOP
 importselectSOP = SOP
 
 class animationCOMP(COMP):
@@ -1707,6 +1768,8 @@ class objectCOMP(COMP):
 class cameraCOMP(objectCOMP):
 	def projectionInverse(self, x, y) -> _Matrix: pass
 	def projection(self, x, y) -> _Matrix: pass
+
+geotextCOMP = objectCOMP
 
 class scriptCHOP(CHOP):
 	def destroyCustomPars(self): pass

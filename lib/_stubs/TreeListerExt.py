@@ -8,13 +8,14 @@ can be accessed externally, e.g. op('yourComp').PromotedFunction().
 For more info, see: http://www.derivative.ca/wiki099/index.php?title=Extensions
 """
 
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 from TDStoreTools import StorageManager
 TDF = op.TDModules.mod.TDFunctions
 TDJSON = op.TDModules.mod.TDJSON
 ListerExtMod = op('lister/ListerExt').module
 ListerExt = ListerExtMod.ListerExt
 COLLOOKOVERLAYER = ListerExtMod.COLLOOKOVERLAYER
+ROLLOVERLAYER = ListerExtMod.ROLLOVERLAYER
 
 class TreeListerExt(ListerExt):
 	"""
@@ -22,7 +23,7 @@ class TreeListerExt(ListerExt):
 
 	Each item in the tree must have a unique ID. This is commonly a path, but
 	can be any string, int, float, or tuple.
-	It stores it's tree as OrderedDicts of OrderedDicts, keyed by ID.
+	It stores it's tree as dicts of dicts, keyed by ID.
 	"""
 
 	# region Main
@@ -82,6 +83,9 @@ class TreeListerExt(ListerExt):
 		# move script errors to treeLister
 		if self.ownerComp.scriptErrors():
 			self.SetError(self.ownerComp.scriptErrors())
+		# update sorts/filters
+		for p in ['Sortcols', 'Sortreverse', 'Filtercols']:
+			self.TreeLister.par[p] = self.ownerComp.par[p].eval()
 
 	def PostInit(self):
 		scriptErrors = self.ownerComp.scriptErrors()
@@ -175,10 +179,12 @@ class TreeListerExt(ListerExt):
 		"""
 		objRowData = [self.rowObjectToWorkingData(obj) for obj in objects]
 		separator = self.treeListerComp.par.Pathseparator.eval()
+		#print(project.pythonStack())
 		# debug(objRowData)
 		self.SortDataRows(objRowData)
 		for row in objRowData:
 			obj = row[-1]
+			#debug('  '*depth,obj['path'], obj['__children__'])
 			id = self.GetIDFromObject(obj)
 			if parent is None:
 				root = id
@@ -200,6 +206,7 @@ class TreeListerExt(ListerExt):
 
 			# recurse through children
 			children = self.GetObjectChildren(obj)
+			#print(len(children))
 			if children:
 				if id in self.Expanded[root]:
 					row[1] = '1'
@@ -218,14 +225,14 @@ class TreeListerExt(ListerExt):
 
 	# region Promoted Methods
 
-	def Refresh(self):
+	def Refresh(self, pulseReset=True):
 		if self.initialized:
 			self.SetError()
 		self.wiredOverlayCols = [int(col) for col in
 			 	self.customDefine['wiredOverlayCols', 1].val.strip().split()]
 		self.wiredOverlayColor = [float(i) for i in
 			self.customDefine['wiredOverlayColor', 1].val.strip().split()]
-		ListerExt.Refresh(self)
+		ListerExt.Refresh(self, pulseReset)
 
 	def ReloadInput(self):
 		"""
@@ -233,9 +240,9 @@ class TreeListerExt(ListerExt):
 		"""
 		if self.ownerComp.par.Autodefinecols:
 			self.setupAutoColDefine()
-		self.json = OrderedDict()
-		self.jsonIDObjDict = OrderedDict()
-		self.jsonObjIDDict = OrderedDict()
+		self.json = dict()
+		self.jsonIDObjDict = dict()
+		self.jsonObjIDDict = dict()
 		if self.treeInputDAT.text:
 			try:
 				if self.treeListerComp.par.Inputmode == 'JSON':
@@ -260,19 +267,22 @@ class TreeListerExt(ListerExt):
 					'Set up json, jsonIDObjDict, jsonObjIDDict in place.'})
 		except:
 			self.SetError("Error in onReloadInput callback. See Textport.")
-		self.Refresh()
+		self.FrameRefresh()
 
 	def LoadInputWithPathCol(self, table, useWirePath=False):
 		separator = self.treeListerComp.par.Pathseparator.eval()
 		if not separator:
 			self.SetError('Path Separator parameter required to load input.')
+			return
 		pathCell = table[0, 'path']
 		if pathCell is None:
 			self.treeListerComp.SetError('Input has no "path" column.')
+			return
 		if useWirePath:
 			wirePathCell = table[0, 'wirepath']
 			if wirePathCell is None:
 				self.treeListerComp.SetError('Input has no "wirepath" column.')
+				return
 		self.LoadTableWithPathCol(table, separator, useWirePath)
 
 	def LoadTableWithPathCol(self, table, separator, useWirePath=False):
@@ -284,7 +294,7 @@ class TreeListerExt(ListerExt):
 				continue # header
 			rowData = {keys[i]:entry[i].val for i in range(numCols)}
 			rowData['__row__'] = index
-			rowData['__children__'] = OrderedDict()
+			rowData['__children__'] = dict()
 			rows.append(rowData)
 		self.LoadDictsWithPathKey(rows, separator, useWirePath)
 
@@ -317,7 +327,7 @@ class TreeListerExt(ListerExt):
 		# for d in dicts:
 		# 	print(d['path'], '-', wirePath(d))
 
-		self.json = OrderedDict()
+		self.json = dict()
 		json = self.json
 		rootPath = None
 		for d in dicts:
@@ -356,8 +366,8 @@ class TreeListerExt(ListerExt):
 			self.json = TDJSON.textToJSON(JSON)
 		else:
 			self.json = JSON
-		self.jsonIDObjDict = OrderedDict()
-		self.jsonObjIDDict = OrderedDict()
+		self.jsonIDObjDict = dict()
+		self.jsonObjIDDict = dict()
 		self.DefaultRoots = []
 		if self.json:
 			for k, v in self.json.items():
@@ -601,6 +611,17 @@ class TreeListerExt(ListerExt):
 		else:
 			raise Exception("SelectedPaths only works in "
 							"\"path\" col modes.")
+
+	def setupRefreshIcon(self):
+		attribs = self.ownerComp.cellAttribs[0,1]
+		attribs.help = 'Click To Refresh'
+		attribs.fontFace = 'Material Design Icons'
+		attribs.textOffsetX = 1
+		attribs.textOffsetY = 0
+		attribs.fontBold = True
+		attribs.fontSizeX = self.ownerComp.Looks['header']['fontSizeX'] * 1.5
+		attribs.text = eval(self.customDefine['refreshChar', 'Data'].val)
+
 	# endregion
 
 	# region Properties
@@ -660,7 +681,7 @@ class TreeListerExt(ListerExt):
 		if not self.rawData:
 			self.rawData = []
 			self.workingData = []
-			self.treeDataDict = OrderedDict()
+			self.treeDataDict = dict()
 			self.visibleIDs = {root:set() for root in roots}
 			# reset Expanded dicts
 			for r in roots:
@@ -698,7 +719,6 @@ class TreeListerExt(ListerExt):
 								pass
 
 	def rowObjectToWorkingData(self, rowObject):
-		# debug(rowObject)
 		convertedRow = ListerExt.rowObjectToWorkingData(self, rowObject)
 		for i, dataCell in enumerate(self.colDefine.row('sourceDataMode')[1:]):
 			if dataCell.val == 'id':
@@ -741,11 +761,22 @@ class TreeListerExt(ListerExt):
 		self.colNumDict = {v: k for k, v in self.columnDict.items()}
 		self.colDefine = self._colDefine.val = self.autoColDefine
 
-	def SelectColumn(self, col):
-		ListerExt.SelectColumn(self, col)
-		self.Refresh()
+	# def SelectColumn(self, col):
+	# 	ListerExt.SelectColumn(self, col)
+	# 	self.Refresh()
 
-	def InitRow(self, row):
+	def InitCell(self, row, col):
+		ListerExt.InitCell(self, row, col)
+		rowObject = self.Data[row]['rowObject']
+		if type(rowObject) == self._JSONObj \
+					and self.colDefine['sourceData', col+1].val == 'value' \
+					and rowObject.children is not None:
+			self.ownerComp.cellAttribs[row,col].editable = 0
+		if row == 0 and col == 1 and self.ownerComp.par.Header and \
+								self.treeListerComp.par.Clickcornertorefresh:
+			self.setupRefreshIcon()
+
+	def InitRow(self, row):	
 		ListerExt.InitRow(self, row)
 		if self.header and row == 0:
 			return
@@ -766,69 +797,60 @@ class TreeListerExt(ListerExt):
 
 	def RollCell(self, row, col, on=True):
 		# unroll the cell if we're rolling over an empty expando
-		if col == 1 and not self.ownerComp.cellAttribs[row, col].top \
-				and (not self.header or row > 0):
+		if col == 1 and not self.expando(row) \
+										and (not self.header or row > 0):
 			on = False
 		ListerExt.RollCell(self, row, col, on)
 		if row == 0 and col == 1 and self.ownerComp.par.Header and \
 								self.treeListerComp.par.Clickcornertorefresh:
+			look = 'headerRoll'
+			doCallbacks = self.doAdvancedCallbacks
 			if on:
-				self.ownerComp.cellAttribs[row,col].top = \
-									self.ownerComp.ConfigComp.op('refreshRoll')
+				self.SetCellLook(row, col, look, True,
+						ROLLOVERLAYER, doCallback=doCallbacks)
+				self.setupRefreshIcon()
 			else:
-				self.ownerComp.cellAttribs[row,col].top = \
-									self.ownerComp.ConfigComp.op('refresh')
+				self.RemoveOverlay(row, col, ROLLOVERLAYER)
+				self.SetCellLook(row, col, None, look,
+						ROLLOVERLAYER, doCallback=doCallbacks)
+				self.setupRefreshIcon()
 
 	def PressCell(self, row, col):
-		# don't press if we're pressing an empty expando
 		if row == 0 and col == 1 and self.ownerComp.par.Header and \
 								self.treeListerComp.par.Clickcornertorefresh:
-			self.ownerComp.cellAttribs[row,col].top = \
-									self.ownerComp.ConfigComp.op('refreshPress')
-		elif col == 1 and not self.ownerComp.cellAttribs[row, col].top \
-				and (not self.header or row > 0):
+			self.SetCellLook(row, col, 'headerPress', True,
+						ROLLOVERLAYER, self.doAdvancedCallbacks)
+			self.setupRefreshIcon()
+		# don't press if we're pressing an empty expando
+		elif col == 1 and not self.expando(row) \
+									and (not self.header or row > 0):
 			return
 		else:
 			ListerExt.PressCell(self, row, col)
 
 	def Click(self, row, col):
 		# don't press if we're pressing an empty expando
-		if col == 1 and self.ownerComp.cellAttribs[row, col].top and \
+		if col == 1 and self.Data[row]['Expando'] is not None and \
 								(not self.header or row > 0):
 			root = self.treeDataDict[row].root
 			id = self.GetIDFromObject(self.Data[row]['rowObject'])
 			self.ToggleExpand(id, root=root)
-			self.Refresh()
+			self.FrameRefresh()
 		ListerExt.Click(self, row, col)
 		if row == 0 and col == 1 and self.ownerComp.par.Header and \
 								self.treeListerComp.par.Clickcornertorefresh:
 			self.Refresh()
 
-
-	def InitCell(self, row, col):
-		ListerExt.InitCell(self, row, col)
-		rowObject = self.Data[row]['rowObject']
-		if type(rowObject) == self._JSONObj \
-					and self.colDefine['sourceData', col+1].val == 'value' \
-					and rowObject.children is not None:
-			self.ownerComp.cellAttribs[row,col].editable = 0
-		if row == 0 and col == 1 and self.ownerComp.par.Header and \
-								self.treeListerComp.par.Clickcornertorefresh:
-			self.ownerComp.cellAttribs[row,col].help = 'Click To Refresh'
-			self.ownerComp.cellAttribs[row,col].top = \
-										self.ownerComp.ConfigComp.op('refresh')
-
-
-	def SetCellText(self, row, col, text, tableSync=True):
+	def SetCellText(self, row, col, text, outTableSync=True):
 		rowObject = self.Data[row]['rowObject']
 		if type(rowObject) == self._JSONObj \
 					and self.colDefine['sourceData', col+1].val == 'value' \
 					and rowObject.children is not None:
 			text = ''
-		ListerExt.SetCellText(self, row, col, text, tableSync)
+		ListerExt.SetCellText(self, row, col, text, outTableSync)
 
-	def onEdit(self, row, col, val):
-		ListerExt.onEdit(self, row, col, val)
+	def onEdit(self, row, col, val, addUndo=True):
+		ListerExt.onEdit(self, row, col, val, addUndo)
 		rowObject = self.Data[row]['rowObject']
 		if type(rowObject) == self._JSONObj \
 					and self.colDefine['sourceData', col+1].val == 'value':
@@ -845,10 +867,10 @@ class TreeListerExt(ListerExt):
 
 	def onSelect(self, startrow, startcol, startcoords, endrow, endcol,
 													endcoords, start, end):
-		if startcol == 1 and not self.ownerComp.cellAttribs[startrow, 1].top \
+		if startcol == 1 and not self.expando(startrow) \
 										and (not self.header or startrow > 0):
 			startcol = 0
-		if endcol == 1 and not self.ownerComp.cellAttribs[endrow, 1].top \
+		if endcol == 1 and not self.expando(startrow) \
 										and (not self.header or endrow > 0):
 			endcol = 0
 		ListerExt.onSelect(self, startrow, startcol, startcoords, endrow,
@@ -860,7 +882,19 @@ class TreeListerExt(ListerExt):
 			protected config comp
 		"""
 		self.defaultConfig = self.treeListerComp.op('configDefault')
+		for expandoLook in ('expandoPress', 'expandoRoll', 'expando'):
+			if self.configComp.op(expandoLook) is None:
+				debug('!', self.defaultConfig.op(expandoLook))
+				n = self.configComp.copy(self.defaultConfig.op(expandoLook))
+				debug(n)
+				TDF.arrangeNode(n, 'left')
 		ListerExt.fixConfig(self)
+
+	def expando(self, row):
+		"""
+		Return value of Expando for the given row
+		"""
+		return self.Data[row]['Expando']
 	# endregion
 
 	# region Callbacks
@@ -869,15 +903,16 @@ class TreeListerExt(ListerExt):
 		if par.name in ['Usedefaultroots', 'Roots', 'Showroots',
 						'Clickcornertorefresh', 'Sortcols', 'Sortreverse']:
 			self.Refresh()
-		elif par.name in ['Pathseparator', 'Inputmode', 'Numericpath']:
-			self.ReloadInput()
-		elif par.name == 'Autodefinecols':
+		elif par.name in ['Pathseparator', 'Inputmode', 'Numericpath',
+							'Autodefinecols']:
 			self.ReloadInput()
 		if par.name == 'Header' and self.ownerComp.par.Autodefinecols:
 			self.SelectedRows = []
 			ListerExt.setupAutoColDefine(self, True)
 			self.setupAutoColDefine()
 			self.Refresh()
+		elif par.name == 'Usesortindicatorchars':
+			self.ReloadInput()
 		else:
 			ListerExt.OnParValueChange(self, par, val, prev)
 

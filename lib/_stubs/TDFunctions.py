@@ -69,11 +69,11 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 			op('/')
 			op('./<path>')  -  Direct child
 			op('<toOp.name>')  -  Direct sibling
+			op.<opshortcut>		
 			parent.<parentshortcut>
+			parent(#)				
 			parent.<parentshortcut>.op('<path>')
-			op.<opshortcut>
 			op.<opshortcut>.op('<path>')
-			parent(#)
 			parent(#).op('<path>')
 			op('<toOp.path>')
 
@@ -127,30 +127,11 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 		return parCheck('op.' + toOp.par.opshortcut.eval())
 
 	# parent(#)
-	if True: # toOp.parent() != op('/'):
-		if parentLevel(toOp, fromOp) and toOp != root:
-			level = parentLevel(toOp, fromOp)
-			return parCheck('parent(' + (str(level) if level > 1 else '') + ')')
-		# parent(#).op('<path>')
-		# search for common parents
-		sanity = 100
-		searchOp = toOp
-		while searchOp != op('/'):
-			sanity -= 1  # reduce sanity
-			if sanity == 0:
-				raise Exception("parentLevel search exceeded max depth",
-								fromOp, toOp)
-			searchOp = searchOp.parent()
-			level = parentLevel(searchOp, fromOp)
-			if level:
-				if level > 1 and searchOp != root:
-					rootExpr = 'parent(' + \
-							   		(str(level) if level > 1 else '') + ').'
-				else:
-					rootExpr = ''
-				return parCheck(rootChild(searchOp, rootExpr))
+	if parentLevel(toOp, fromOp) and toOp != root:
+		level = parentLevel(toOp, fromOp)
+		return parCheck('parent(' + (str(level) if level > 1 else '') + ')')
 
-	# op.<globalshortcut>.op('<path>')
+	# parent.<parentshortcut>.op('<path>')
 	# search for common shortcut parents
 	sanity = 100
 	searchOp = toOp
@@ -160,9 +141,48 @@ def getShortcutPath(fromOp, toOp, toParName=None):
 			raise Exception("parentLevel search exceeded max depth",
 							fromOp, toOp)
 		searchOp = searchOp.parent()
+		level = parentLevel(searchOp, fromOp)
+
+		if level and (shortcut:=searchOp.par.parentshortcut.eval().strip()):
+				if shortcut != 'Project':
+					if level > 1 and searchOp != root:
+						rootExpr = 'parent.' + shortcut + '.'
+					else:
+						rootExpr = ''
+					return parCheck(rootChild(searchOp, rootExpr))		
 		opShortcut = searchOp.par.opshortcut.eval().strip()
 		if opShortcut:
 			rootExpr = 'op.' + opShortcut + '.'
+			return parCheck(rootChild(searchOp, rootExpr))
+
+	# op.<globalshortcut>.op('<path>')
+	# search for op shortcut parents
+	sanity = 100
+	searchOp = toOp
+	while searchOp != op('/'):
+		sanity -= 1  # reduce sanity
+		if sanity == 0:
+			raise Exception("parentLevel search exceeded max depth",
+							fromOp, toOp)
+		searchOp = searchOp.parent()
+
+	# parent(#).op('<path>')
+	# search for common parents		
+	sanity = 100
+	searchOp = toOp
+	while searchOp != op('/'):
+		sanity -= 1  # reduce sanity
+		if sanity == 0:
+			raise Exception("parentLevel search exceeded max depth",
+							fromOp, toOp)
+		searchOp = searchOp.parent()
+		level = parentLevel(searchOp, fromOp)
+		if level:
+			if level > 1 and searchOp != root:
+				rootExpr = 'parent(' + \
+								(str(level) if level > 1 else '') + ').'
+			else:
+				rootExpr = ''
 			return parCheck(rootChild(searchOp, rootExpr))
 
 	# op('<toOp.path>')
@@ -298,7 +318,12 @@ def createProperty(classInstance, name, value=None, attributeName=None,
 				except:
 					return getattr(self, attributeName).val
 			else:
-				return getattr(self, attributeName).val
+				try:
+					return getattr(self, attributeName).val
+				except:
+					raise Exception(
+							f'Unable to access {name} in {classInstance}.\n'
+							f'Possible duplicate name.')
 		def setter(self, val):
 			getattr(self, attributeName).val = val
 		def deleter(self):
@@ -332,15 +357,15 @@ def makeDeepDependable(value):
 		depValue = tdu.Dependency(value)
 	return depValue
 
-def forceCookNonDatOps(comp):
+def forceCookNonDatOps(operator):
 	"""
-	Recursively force cook op and all children of op, unless they are DATs
+	Recursively force cook operator and all children of operator, except DATs
 	"""
-	if not isinstance(comp, COMP):
+	if isinstance(operator, DAT):
 		return
-	for child in comp.children:
+	for child in operator.children:
 		forceCookNonDatOps(child)
-	comp.cook(force=True)
+	operator.cook(force=True)
 
 def showInPane(operator, pane='Floating', inside=False):
 	"""
@@ -363,7 +388,7 @@ def showInPane(operator, pane='Floating', inside=False):
 	if pane is None:
 		return
 	# check for closed pane...
-	if pane is not 'Floating' and pane.id not in [p.id for p in ui.panes]:
+	if pane != 'Floating' and pane.id not in [p.id for p in ui.panes]:
 		print ('showInPane: Target pane not found, creating floating pane.')
 		pane = 'Floating'
 
@@ -572,7 +597,13 @@ def applyParInfo(targetOp, parInfo, setDefaults=False):
 				p.mode = mode
 			elif mode == ParMode.BIND:
 				if p.bindMaster is not None:
-					bindVal = p.bindMaster.eval()
+					try:
+						bindVal = p.bindMaster.eval()
+					except:
+						try:
+							bindVal = p.bindMaster.val
+						except:
+							bindVal = p.bindMaster
 				try:
 					p.val = val
 				except:
@@ -858,3 +889,34 @@ def multiMatch(patterns, inputList, caseSensitive=True, useMinus=True):
 		yesSet -= noSet
 	return [item for item in inputList if item in yesSet]
 		
+def formatString(format, dataDict=None):
+	"""
+	format a string using f-string formatting.
+
+	Uses an f-string style format string and a dictionary of data to return a
+	formatted string. For more info, search "Python f-strings".
+
+	Example usage: formatString('{num} red balloons', {'num': 99}) 
+						returns '99 red balloons'
+
+	Args:
+		format (string): the f-string to use for formatting
+		dataDict (dict, optional): dictionary of values available to the format 
+			string. Defaults to {}}.
+
+	Returns:
+		string: formatted string
+	"""
+	ogDict = dataDict.copy()
+	try:
+		return eval(f'f"{format}"', dataDict or {})
+	except:
+		try:
+			return eval(f"f'{format}'", dataDict or {})
+		except Exception as e:
+			msg = f'Invalid format string: {format}\n\t' \
+					f'Available variables: {ogDict}\n\t' \
+					f'Documentation: https://docs.derivative.ca/' \
+								f'Experimental:Palette:lister#colDefine_table'
+			e.args = (e.args[0] + f'\n{msg}',)
+			raise e from None

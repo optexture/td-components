@@ -294,7 +294,6 @@ class DependDict(DependMixin, MutableMapping):
 
 	@val.setter
 	def val(self, value):
-		self.clear()
 		try:
 			self.clear()
 			self.update(value)
@@ -516,11 +515,7 @@ def isImmutable(item):
 
 
 def makeDependable(parentDep, value, raw=False):
-	if isImmutable(value):
-		newv = value
-	elif isinstance(value, (tdu.Vector, tdu.Matrix, tdu.Position)):
-		newv = value
-	elif raw and isinstance(value, (dict, list, set)):
+	if raw and isinstance(value, (dict, list, set)):
 		newv = value
 	elif isinstance(value, dict):
 		newv = DependDict(value)
@@ -545,7 +540,9 @@ def makeDependable(parentDep, value, raw=False):
 			value.val.parentDep = parentDep
 		return value
 	else:
-		raise TypeError('Value can not be made dependable', value, type(value))
+		newv = value
+	if hasattr(newv, '_TDParentDep'):
+		newv._TDParentDep = parentDep
 	return tdu.Dependency(newv)
 
 

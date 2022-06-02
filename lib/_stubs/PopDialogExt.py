@@ -16,7 +16,7 @@
 # _END_HEADER_
 
 from TDStoreTools import StorageManager
-
+import TDFunctions as TDF
 class PopDialogExt:
 
 	def __init__(self, ownerComp):
@@ -29,11 +29,17 @@ class PopDialogExt:
 		self.ownerComp = ownerComp
 		self.windowComp = ownerComp.op('popDialogWindow')
 		self.details = None
-		storedItems = [
-			{'name':'EnteredText', 'default':''}
-		]
-		self.stored = StorageManager(self, ownerComp, storedItems)
-		self.UpdateTextHeight()
+
+		# upgrade version
+		h = self.ownerComp.par.h
+		if h.mode == ParMode.EXPRESSION and h.expr == "op('./dialog').par.h":
+			h.expr = "me.DialogHeight"
+			h.readOnly = True
+
+		TDF.createProperty(self, 'EnteredText', value='')
+		TDF.createProperty(self, 'TextHeight', value=0)
+		run("args[0].UpdateTextHeight()", self, delayFrames=1, 
+					delayRef=op.TDResources)
 
 	def OpenDefault(self, text='', title='', buttons=('OK',), callback=None,
 					details=None, textEntry=False, escButton=1,
@@ -99,8 +105,7 @@ class PopDialogExt:
 				self.ownerComp.par.Textentryarea = False
 		self.EnteredText = self.ownerComp.par.Textentrydefault.eval()
 		self.details = details
-		self.ownerComp.op('entry/inputText').par.text = \
-				self.ownerComp.op('entry').panel.field = self.EnteredText
+		self.ownerComp.op('entry/inputText').par.text = self.EnteredText
 		self.ownerComp.op('entry').cook(force=True)
 		if escButton is not None:
 			if escButton is False or not (1 <= escButton <= 4):
@@ -115,6 +120,8 @@ class PopDialogExt:
 			else:
 				self.ownerComp.par.Enterbutton = str(enterButton)
 		self.UpdateTextHeight()
+		# HACK shouldn't be necessary - problem with clones/replicating
+		self.ownerComp.op('replicator1').par.recreateall.pulse()
 		run("op('" + self.ownerComp.path + "').ext.PopDialogExt.actualOpen()",
 										delayFrames=1, delayRef=op.TDResources)
 
@@ -123,18 +130,13 @@ class PopDialogExt:
 		self.windowComp.par.winopen.pulse()
 		ext.CallbacksExt.DoCallback('onOpen')
 		if self.ownerComp.op('entry').par.display.eval():
-			self.ownerComp.setFocus()
-			# hack should be automatically set by kbfocus
-			# self.ownerComp.op('entry').setFocus()
+			# self.ownerComp.setFocus()
 			# hack shouldn't have to wait a frame
-			run('op("' + self.ownerComp.path + '").op("entry").'
-							'setKeyboardFocus(selectAll=True)',
-							delayFrames=1, delayRef=op.TDResources)
+			run('op("' + self.ownerComp.path + '").op("entry/inputText").'
+			 				'setKeyboardFocus(selectAll=True)',
+			 				delayFrames=1, delayRef=op.TDResources)
 		else:
 			self.ownerComp.setFocus()
-			self.ownerComp.op('entry').setKeyboardFocus(selectAll=True)
-		# HACK shouldn't be necessary - problem with clones/replicating
-		self.ownerComp.op('replicator1').par.recreateall.pulse()
 
 	def Close(self):
 		"""
@@ -143,8 +145,7 @@ class PopDialogExt:
 		ext.CallbacksExt.SetAssignedCallback('onSelect', None)
 		ext.CallbacksExt.DoCallback('onClose')
 		self.windowComp.par.winclose.pulse()
-		self.ownerComp.op('entry/inputText').par.text = \
-				self.ownerComp.op('entry').panel.field = self.EnteredText
+		self.ownerComp.op('entry/inputText').par.text = self.EnteredText
 
 	def OnButtonClicked(self, buttonNum):
 		"""
@@ -206,5 +207,11 @@ class PopDialogExt:
 						'index.php?title=Palette:popDialog')
 
 	def UpdateTextHeight(self):
-		self.ownerComp.op('text').par.h = \
-								self.ownerComp.op('text/text').textHeight
+		self.TextHeight = self.ownerComp.op('text/text').evalTextSize(
+													self.ownerComp.par.Text)[1]
+
+	@property
+	def DialogHeight(self):
+		return 65 + self.TextHeight + \
+				(20 if self.ownerComp.par.Title else 0) + \
+				(37 if self.ownerComp.par.Textentryarea else 0)
