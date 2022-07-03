@@ -333,6 +333,7 @@ class Editor:
 			msg = f'Saving component to {expandedPath}'
 			print(msg)
 			ui.status = msg
+			comp.par.externaltox = tox
 			comp.save(tox, createFolders=True)
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 2:
