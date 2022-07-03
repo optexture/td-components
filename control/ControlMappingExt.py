@@ -42,6 +42,7 @@ class ControlTarget:
 			'high',
 			'control',
 			'group',
+			'handling',
 		]
 		if not dat.numRows:
 			dat.appendRow(mappingColumns)
@@ -126,6 +127,7 @@ class ControlMapper:
 			'control',
 			'cc',
 			'chan',
+			'handling',
 		])
 		for target in ops(*targets):
 			mappings = target.op('mappings')
@@ -248,6 +250,7 @@ def _AddToMapTable(
 		outDat[row, 'control'] = control
 		outDat[row, 'cc'] = cc
 		outDat[row, 'chan'] = chan
+		outDat[row, 'handling'] = inDat[inRow, 'handling'] or 'script'
 
 class DeviceDisplay:
 	def __init__(self, ownerComp):
