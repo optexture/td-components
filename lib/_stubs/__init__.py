@@ -474,6 +474,14 @@ class ParTupleCollection:
 	def __getitem__(self, item) -> ParTuple: pass
 	def __setitem__(self, key, value: _T.Any): pass
 
+class ParGroupCollection:
+	owner: 'OP'
+
+	def __getattr__(self, item) -> ParGroup: pass
+	def __setattr__(self, key, value: _T.Any): pass
+	def __getitem__(self, item) -> ParGroup: pass
+	def __setitem__(self, key, value: _T.Any): pass
+
 class Page:
 	name: str
 	owner: 'OP'
@@ -537,11 +545,13 @@ class OP:
 	mod: _T.Any
 	par: ParCollection
 	parTuple: ParTupleCollection
+	parGroup: ParGroupCollection
 	pages: _T.List['Page']
+	customParGroups: _T.List['ParGroup']
 	customPars: _T.List['Par']
 	customPages: _T.List['Page']
 	customTuplets: _T.List[ParTupletT]
-	builtInPars: _T.List[Par]
+	builtinPars: _T.List['Par']
 	replicator: _T.Optional['OP']
 	storage: _T.Dict[str, _T.Any]
 	tags: _T.Set[str]
@@ -877,11 +887,13 @@ class _ArcBall:
 	def setTransform(self, matrix: _Matrix) -> None: pass
 	def identity(self) -> None: pass
 
-class _PathInfo(str):
+class _FileInfo(str):
 	path: str
 	ext: str  # includes "."
+	baseName: str
 	fileType: str
 	absPath: str
+	dir: str
 	exists: bool
 	isDir: bool
 	isFile: bool
@@ -889,6 +901,7 @@ class _PathInfo(str):
 	# noinspection PyMissingConstructor,PyUnusedLocal
 	def __init__(self, path: str = None): pass
 
+_PathInfo = _FileInfo
 
 class _Dependency:
 	def __init__(self, _=None):
@@ -929,7 +942,8 @@ class tdu:
 	Vector = _Vector
 	Color = _Color
 	Matrix = _Matrix
-	PathInfo = _PathInfo
+	PathInfo = _FileInfo  # alias for FileInfo
+	FileInfo = _FileInfo
 
 	# noinspection PyShadowingBuiltins
 	@staticmethod
@@ -1052,6 +1066,11 @@ class DAT(OP):
 	isText: bool
 	locals: _T.Dict[str, _T.Any]
 
+class scriptDAT(DAT):
+	def destroyCustomPars(self): pass
+	def sortCustomPages(self, *pages): pass
+	def appendCustomPage(self, name: str) -> 'Page': pass
+
 class evaluateDAT(DAT):
 	exprCell: 'Cell'
 	exprCol: int
@@ -1092,6 +1111,10 @@ class webclientDAT(DAT):
 			oauth2Token: str = None,
 			uploadFile: str = None,
 	) -> None: pass
+
+	def closeConnection(self, id: int): pass
+
+_AnyDatT = _T.Union[DAT, scriptDAT, evaluateDAT, oscoutDAT, oscinDAT, webclientDAT, tcpipDAT, udpinDAT]
 
 class CHOP(OP):
 	numChans: int
@@ -1154,6 +1177,7 @@ class COMP(OP):
 			parName: str = None,
 			onlyNonDefaults: bool = False,
 			key: _T.Callable[['_AnyOpT'], bool] = None,
+			includeUtility: bool = False,
 	) -> '_T.List[_AnyOpT]': pass
 	def copy(self, o: '_AnyOpT', name: str = None, includeDocked=True) -> 'op': pass
 	def create(self, OPtype: _T.Union[str, _T.Type['_AnyOpT']], name: _T.Optional[str] = None, initialize=True) -> '_AnyOpT': pass
@@ -1744,7 +1768,7 @@ _AnyOpT = _T.Union[OP, DAT, COMP, CHOP, SOP, TOP, MAT, '_AnyCompT', '_AnyDatT']
 
 baseCOMP = COMP
 panelCOMP = PanelCOMP
-mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = scriptDAT = DAT
+mergeDAT = nullDAT = parameterexecuteDAT = parameterDAT = tableDAT = textDAT = DAT
 inDAT = outDAT = infoDAT = substituteDAT = DAT
 parameterCHOP = nullCHOP = selectCHOP = inCHOP = outCHOP = CHOP
 inTOP = outTOP = nullTOP = TOP
@@ -1831,8 +1855,6 @@ udtinDAT = udpinDAT
 class tcpipDAT(DAT):
 	def sendBytes(self, *messages) -> int: pass
 	def send(self, *messages: str, terminator='') -> int: pass
-
-_AnyDatT = _T.Union[DAT, tcpipDAT, udpinDAT, oscoutDAT, oscinDAT, evaluateDAT, webclientDAT]
 
 class App:
 	architecture: str
