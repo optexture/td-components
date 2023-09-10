@@ -486,6 +486,7 @@ class Page:
 	name: str
 	owner: 'OP'
 	parTuplets: _T.List[ParTupletT]
+	parGroups: _T.List[ParGroup]
 	pars: _T.List['Par']
 	index: int
 	isCustom: bool
@@ -1133,6 +1134,23 @@ class CHOP(OP):
 	def numpyArray(self) -> 'numpy.array': pass
 	def convertToKeyframes(self, tolerance=0.1) -> 'animationCOMP': pass
 	def save(self, filepath) -> str: pass
+
+class eventCHOP(CHOP):
+	def releaseEvent(self, id: int) -> int: pass
+	def createEvent(
+			self, hold=False, samples=[], index=0,
+			attackTime: float = None,
+			attackLevel: float = None,
+			decayTime: float = None,
+			sustainTime: float = None,
+			sustainMin: float = None,
+			sustainMax: float = None,
+			releaseTime: float = None,
+			releaseLevel: float = None,
+			speed: float = None,
+	):
+		pass
+
 
 class COMP(OP):
 	extensions: list
