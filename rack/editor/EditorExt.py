@@ -333,7 +333,11 @@ class Editor:
 			msg = f'Saving component to {expandedPath}'
 			print(msg)
 			ui.status = msg
+			# print('DBG trying to set externaltox to', tox)
 			comp.par.externaltox = tox
+			# print('DBG ... externaltox is now', comp.par.externaltox.eval())
+			# this might help with a cook update bug:
+			comp.par.externaltox.eval()
 			comp.save(tox, createFolders=True)
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 2:
