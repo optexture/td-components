@@ -7,9 +7,10 @@ if False:
 	# noinspection PyUnresolvedReferences
 	from _stubs import *
 	from _stubs.PopDialogExt import PopDialogExt
-	from .components.SettingsExt import UserSettings
-	from .components.EditorViewsExt import EditorViews
-	from .components.EditorToolsExt import EditorTools
+	from components.SettingsExt import UserSettings
+	from components.EditorViewsExt import EditorViews
+	from components.EditorToolsExt import EditorTools
+	from rack.component_picker.ComponentPickerExt import ComponentPicker
 	from ui.statusOverlayExt import StatusOverlay
 	iop.hostedComp = COMP()
 	ipar.editorState = Any()
@@ -21,11 +22,12 @@ if False:
 	iop.editorViews = EditorViews(None)
 	iop.editorTools = EditorTools(None)
 	iop.statusOverlay = StatusOverlay(None)
+	iop.compPicker = ComponentPicker(None)
 
 try:
 	from EditorCommon import *
 except ImportError:
-	from .components.EditorCommon import *
+	from components.EditorCommon import *
 
 class Editor:
 	def __init__(self, ownerComp):
@@ -242,6 +244,9 @@ class Editor:
 			self.updateUIAfterComponentLoad()
 			self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
 		elif stage == 4:
+		# 	ipar.compPicker.Selectedcomp = tox
+		# 	self.queueMethodCall('loadComponent_stage', stage + 1, tox, thumb, thenRun, runArgs)
+		# elif stage == 5:
 			self.showStatusMessage('Enabling cooking in component')
 			comp.allowCooking = True
 			if thenRun:
@@ -344,6 +349,9 @@ class Editor:
 			self.updateComponentProperties(tox, thumb)
 			self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
 		elif stage == 3:
+		# 	ipar.compPicker.Selectedcomp = Path(tox).name
+		# 	self.queueMethodCall('saveComponent_stage', stage + 1, tox, thumb)
+		# elif stage == 4:
 			if saveThumb:
 				thumbSource = ipar.editorState.Videooutput.eval()  # type: TOP
 				if thumbSource:
